@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Setup Supabase Service Client (bypasses RLS to reliably update wallets)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(req: Request) {
   try {
+    // Setup Supabase Service Client (bypasses RLS to reliably update wallets)
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     // Note: In a real app, you still need to know *who* is making this request.
     // For this Serverless Route, we can expect the user to send their JWT in Authorization header
     // Or we rely on the @supabase/ssr server client. Since we need an admin client for wallet deduction,
