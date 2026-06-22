@@ -80,29 +80,84 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Order placement failed, please contact support.' }, { status: 500 });
     }
 
-    // 4. Simulate API Handoff to external provider
+    // 4. API Handoff to external provider
     try {
-      // -- FETCH BLOCK PLACEHOLDER --
-      // const apiResponse = await fetch(`https://api.external-provider.com/v1/${service_type}`, {
-      //   method: 'POST',
-      //   body: JSON.stringify(details),
-      // });
-      // const apiData = await apiResponse.json();
-      
-      // Simulating a 1-second API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update order to success
-      await supabaseAdmin
-        .from('orders')
-        .update({ status: 'completed' })
-        .eq('id', order.id);
+      if (service_type === 'number') {
+        const FIVE_SIM_COUNTRIES: Record<string, string> = { us: 'usa', uk: 'england', ca: 'canada', fr: 'france', ng: 'nigeria', za: 'southafrica' };
+        const FIVE_SIM_SERVICES: Record<string, string> = { whatsapp: 'whatsapp', telegram: 'telegram', google_voice: 'google', openai: 'openai', tinder: 'tinder', facebook: 'facebook', textplus: 'textplus' };
+        
+        const countryName = FIVE_SIM_COUNTRIES[details.countryId] || 'any';
+        const productName = FIVE_SIM_SERVICES[details.serviceId] || 'other';
+        const apiKey = process.env.FIVESIM_API_KEY;
+        
+        if (!apiKey) throw new Error("FIVESIM_API_KEY is missing");
 
-      return NextResponse.json({ 
-        message: 'Order completed successfully', 
-        order: { ...order, status: 'completed' },
-        newBalance: newBalance
-      });
+        const simRes = await fetch(`https://5sim.net/v1/user/buy/activation/${countryName}/any/${productName}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json',
+          }
+        });
+
+        const simText = await simRes.text();
+        let simData;
+        try { simData = JSON.parse(simText); } catch(e) { simData = simText; }
+
+        // If 5sim fails (e.g., "no free phones" or "not enough user balance" or HTTP error)
+        if (!simRes.ok || typeof simData === 'string') {
+          // Refund the user's wallet
+          await supabaseAdmin
+            .from('profiles')
+            .update({ wallet_balance: Number(profile.wallet_balance) })
+            .eq('id', user.id);
+            
+          // Mark order as failed provider
+          await supabaseAdmin
+            .from('orders')
+            .update({ status: 'failed_provider', details: { ...details, error: simData } })
+            .eq('id', order.id);
+
+          return NextResponse.json({ 
+            error: typeof simData === 'string' ? `Provider Error: ${simData}` : 'Provider failed to fulfill order.' 
+          }, { status: 502 });
+        }
+
+        // 5sim Success! Returns: { id, phone, operator, product, status, expires, sms: [] }
+        const updatedDetails = { 
+          ...details, 
+          provider_order_id: simData.id, 
+          phone_number: simData.phone,
+          expires: simData.expires 
+        };
+        
+        await supabaseAdmin
+          .from('orders')
+          .update({ status: 'processing', details: updatedDetails })
+          .eq('id', order.id);
+
+        return NextResponse.json({ 
+          message: 'Number purchased successfully', 
+          order: { ...order, status: 'processing', details: updatedDetails },
+          newBalance: newBalance
+        });
+
+      } else {
+        // Simulating a 1-second API call for Boost services
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Update order to success
+        await supabaseAdmin
+          .from('orders')
+          .update({ status: 'completed' })
+          .eq('id', order.id);
+
+        return NextResponse.json({ 
+          message: 'Order completed successfully', 
+          order: { ...order, status: 'completed' },
+          newBalance: newBalance
+        });
+      }
 
     } catch (providerError) {
       // Handle Provider failure (e.g., refund user or set order to manual review)

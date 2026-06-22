@@ -35,6 +35,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
 
   // Active Order State
   const [activeNumber, setActiveNumber] = useState('');
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [smsCode, setSmsCode] = useState('');
   const [isWaitingSms, setIsWaitingSms] = useState(false);
 
@@ -88,21 +89,10 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
         setErrorMsg(data.error || 'Failed to purchase number');
       } else {
         setBalance(data.newBalance);
-        
-        // Simulate receiving a number
-        const mockNumber = countryId === 'us' ? '+1 (555) 019-' + Math.floor(1000 + Math.random() * 9000) 
-                         : countryId === 'uk' ? '+44 7700 900' + Math.floor(100 + Math.random() * 900)
-                         : '+1 (000) 000-0000'; // fallback
-        
-        setActiveNumber(mockNumber);
+        setActiveNumber(data.order.details.phone_number);
+        setActiveOrderId(data.order.id);
         setIsWaitingSms(true);
         setSmsCode('');
-
-        // Simulate waiting for SMS code (takes 5-10 seconds)
-        setTimeout(() => {
-          setSmsCode(Math.floor(100000 + Math.random() * 900000).toString());
-          setIsWaitingSms(false);
-        }, 8000);
       }
     } catch (err) {
       setErrorMsg('An unexpected error occurred.');
@@ -110,6 +100,47 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
       setLoading(false);
     }
   };
+
+  // Poll for SMS code
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isWaitingSms && activeOrderId) {
+      interval = setInterval(async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch('/api/orders/check-sms', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({ orderId: activeOrderId })
+          });
+          
+          const data = await res.json();
+          
+          if (data.status === 'completed' && data.sms_code) {
+            setSmsCode(data.sms_code);
+            setIsWaitingSms(false);
+            clearInterval(interval);
+          } else if (data.status === 'cancelled') {
+            setIsWaitingSms(false);
+            setActiveNumber('');
+            setErrorMsg(data.message || 'Order was cancelled and refunded.');
+            // Refresh balance from DB since it was refunded
+            const balRes = await supabase.from('profiles').select('wallet_balance').eq('id', session?.user.id).single();
+            if (balRes.data) setBalance(Number(balRes.data.wallet_balance));
+            clearInterval(interval);
+          }
+        } catch (e) {
+          console.error("Polling error", e);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    return () => clearInterval(interval);
+  }, [isWaitingSms, activeOrderId, supabase]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
