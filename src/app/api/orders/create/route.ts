@@ -154,8 +154,8 @@ export async function POST(req: Request) {
           'tk_views': 9999,
           'tk_likes': 9999,
           'tk_followers': 9999,
-          'ig_likes': 9999,
-          'ig_followers': 9999,
+          'ig_likes': 10130,     // us Instagram Likes [USA]
+          'ig_followers': 10129, // us Instagram Followers [USA]
           'yt_views': 9999,
           'yt_subs': 9999,
           'fb_page_followers': 9999,
