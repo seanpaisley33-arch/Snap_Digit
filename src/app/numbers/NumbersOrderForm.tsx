@@ -1,30 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Wallet, Loader2, CheckCircle2, Copy, MessageSquare, Plus, ChevronDown, RefreshCw, XCircle } from 'lucide-react';
+import { Wallet, Loader2, CheckCircle2, Copy, MessageSquare, Plus, ChevronDown, RefreshCw, XCircle, X, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-
 import { FaWhatsapp, FaTelegram, FaGoogle, FaRobot, FaFire, FaFacebook, FaMobileAlt } from 'react-icons/fa';
-
-const COUNTRIES = [
-  { id: 'us', code: 'us', name: 'United States' },
-  { id: 'uk', code: 'gb', name: 'United Kingdom' },
-  { id: 'ca', code: 'ca', name: 'Canada' },
-  { id: 'fr', code: 'fr', name: 'France' },
-  { id: 'ng', code: 'ng', name: 'Nigeria' },
-  { id: 'za', code: 'za', name: 'South Africa' },
-];
-
-const SERVICES = [
-  { id: 'whatsapp', name: 'WhatsApp', icon: <FaWhatsapp className="text-[#25D366] w-5 h-5" />, basePrice: 400 },
-  { id: 'telegram', name: 'Telegram', icon: <FaTelegram className="text-[#0088cc] w-5 h-5" />, basePrice: 300 },
-  { id: 'google_voice', name: 'Google Voice', icon: <FaGoogle className="text-[#EA4335] w-5 h-5" />, basePrice: 1500 },
-  { id: 'openai', name: 'OpenAI (ChatGPT)', icon: <FaRobot className="text-[#10a37f] w-5 h-5" />, basePrice: 200 },
-  { id: 'tinder', name: 'Tinder', icon: <FaFire className="text-[#fe3c72] w-5 h-5" />, basePrice: 500 },
-  { id: 'facebook', name: 'Facebook', icon: <FaFacebook className="text-[#1877F2] w-5 h-5" />, basePrice: 350 },
-  { id: 'textplus', name: 'TextPlus', icon: <FaMobileAlt className="text-gray-600 dark:text-gray-300 w-5 h-5" />, basePrice: 250 },
-];
 
 interface ActiveOrder {
   id: string;
@@ -57,24 +37,111 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   return <span>⏳ Expires in {timeLeft}</span>;
 }
 
+const getServiceIcon = (serviceId: string) => {
+  const s = serviceId.toLowerCase();
+  if (s.includes('whatsapp')) return <FaWhatsapp className="w-5 h-5 text-[#25D366]" />;
+  if (s.includes('telegram')) return <FaTelegram className="w-5 h-5 text-[#0088cc]" />;
+  if (s.includes('google')) return <FaGoogle className="w-5 h-5 text-[#EA4335]" />;
+  if (s.includes('openai')) return <FaRobot className="w-5 h-5 text-[#10a37f]" />;
+  if (s.includes('tinder')) return <FaFire className="w-5 h-5 text-[#fe3c72]" />;
+  if (s.includes('facebook')) return <FaFacebook className="w-5 h-5 text-[#1877F2]" />;
+  return <FaMobileAlt className="w-5 h-5 text-gray-500" />;
+}
+
 export default function NumbersOrderForm({ initialBalance }: { initialBalance: number }) {
   const [balance, setBalance] = useState(initialBalance);
-  const [countryId, setCountryId] = useState(COUNTRIES[0].id);
-  const [serviceId, setServiceId] = useState(SERVICES[0].id);
+  
+  const [countries, setCountries] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [exchangeRate, setExchangeRate] = useState(600); // Default fallback
+  
+  const [countryId, setCountryId] = useState('usa'); // Default to USA
+  const [serviceId, setServiceId] = useState('whatsapp'); // Default to Whatsapp
+  
   const [loading, setLoading] = useState(false);
-  const [cancelLoading, setCancelLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+
+  // Modals state
+  const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const router = useRouter();
+  const supabase = createClient();
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+  // Fetch initial data
+  useEffect(() => {
+    const initData = async () => {
+      // Fetch Exchange Rate
+      try {
+        const erRes = await fetch('https://open.er-api.com/v6/latest/USD');
+        const erData = await erRes.json();
+        if (erData?.rates?.XAF) {
+          setExchangeRate(erData.rates.XAF);
+        }
+      } catch (e) {
+        console.error("Exchange rate fetch failed, using default 600");
+      }
 
-  const router = useRouter();
-  const supabase = createClient();
+      // Fetch Countries
+      try {
+        const cRes = await fetch('https://5sim.net/v1/guest/countries');
+        const cData = await cRes.json();
+        const cArr = Object.keys(cData).map(key => {
+          const isoObj = cData[key].iso || {};
+          const isoCode = Object.keys(isoObj)[0] || 'us';
+          return {
+            id: key,
+            name: cData[key].text_en,
+            code: isoCode.toLowerCase()
+          };
+        }).sort((a, b) => a.name.localeCompare(b.name));
+        
+        setCountries(cArr);
+      } catch (e) {
+        console.error("Countries fetch failed");
+      }
+    };
+    initData();
+  }, []);
+
+  // Fetch Services when Country changes
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!countryId) return;
+      try {
+        const sRes = await fetch(`https://5sim.net/v1/guest/products/${countryId}/any`);
+        const sData = await sRes.json();
+        const sArr = Object.keys(sData).map(key => {
+          return {
+            id: key,
+            name: key.charAt(0).toUpperCase() + key.slice(1),
+            price: sData[key].Price,
+            qty: sData[key].Qty
+          };
+        }).sort((a, b) => a.name.localeCompare(b.name));
+        
+        setServices(sArr);
+        
+        // Auto-select first available service if current serviceId is not in the new list
+        if (!sArr.find(s => s.id === serviceId) && sArr.length > 0) {
+          setServiceId(sArr[0].id);
+        }
+      } catch (e) {
+        console.error("Services fetch failed");
+        setServices([]);
+      }
+    };
+    fetchServices();
+  }, [countryId]);
 
   // Load existing orders on mount
   useEffect(() => {
@@ -104,22 +171,26 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
     fetchActiveOrders();
   }, [supabase]);
 
-  // Price multiplier logic
-  const getPrice = () => {
-    const base = SERVICES.find(s => s.id === serviceId)?.basePrice || 0;
-    const countryMultiplier = countryId === 'us' || countryId === 'uk' ? 1.5 : 1.0;
-    return Math.floor(base * countryMultiplier);
-  };
+  // Pricing calculations
+  const selectedCountryObj = countries.find(c => c.id === countryId);
+  const selectedServiceObj = services.find(s => s.id === serviceId);
 
-  const totalCharge = getPrice();
+  const priceUSD = selectedServiceObj ? (selectedServiceObj.price * 10) : 0;
+  const priceXAF = Math.round(priceUSD * exchangeRate);
 
   const handlePurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
-    if (totalCharge > balance) {
+    if (priceXAF > balance) {
       setErrorMsg('Insufficient balance. Please fund your wallet.');
+      setLoading(false);
+      return;
+    }
+
+    if (!selectedCountryObj || !selectedServiceObj) {
+      setErrorMsg('Please wait for services to load.');
       setLoading(false);
       return;
     }
@@ -135,7 +206,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
         },
         body: JSON.stringify({
           service_type: 'number',
-          cost: totalCharge,
+          cost: priceXAF,
           details: {
             country: countryId,
             service: serviceId,
@@ -149,14 +220,14 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
         setErrorMsg(data.error || 'Failed to purchase number');
       } else {
         setBalance(data.newBalance);
-        // Add to active orders
-        setActiveOrders(prev => [...prev, {
+        setActiveOrders(prev => [{
           id: data.order.id,
           phone_number: data.order.details.phone_number,
           country: countryId,
           service: serviceId,
           expires: data.order.details.expires || new Date(Date.now() + 15 * 60000).toISOString(),
-        }]);
+        }, ...prev]);
+        showToast('Number generated successfully!', 'success');
       }
     } catch (err) {
       setErrorMsg('An unexpected error occurred.');
@@ -197,7 +268,6 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   };
 
   const handleDismissOrder = (orderId: string) => {
-    // Just removes it from view (for completed orders)
     setActiveOrders(prev => prev.filter(o => o.id !== orderId));
   };
 
@@ -213,7 +283,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
           if (!session) return;
 
           for (const order of pendingOrders) {
-            if (order.isCancelling) continue; // skip polling if currently cancelling
+            if (order.isCancelling) continue;
 
             const res = await fetch('/api/orders/check-sms', {
               method: 'POST',
@@ -237,7 +307,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
         } catch (e) {
           console.error("Polling error", e);
         }
-      }, 5000); // Poll every 5 seconds
+      }, 5000);
     }
 
     return () => clearInterval(interval);
@@ -247,6 +317,10 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
     navigator.clipboard.writeText(text);
     showToast('Copied to clipboard!', 'success');
   };
+
+  // Modal filters
+  const filteredCountries = countries.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredServices = services.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
@@ -279,7 +353,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
             <div className="bg-white/20 rounded-full p-0.5">
               <Plus className="w-4 h-4" />
             </div>
-            {balance.toLocaleString()} XAF
+            {balance.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2})} XAF
           </button>
         </div>
 
@@ -291,67 +365,67 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
 
         {/* --- Purchase Form (Always Visible) --- */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-200 dark:border-gray-800 space-y-6">
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Select Country</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {COUNTRIES.map(c => {
-                const isSelected = countryId === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setCountryId(c.id)}
-                    className={`flex items-center gap-3 p-3 rounded-2xl transition-all border-2 text-left ${
-                      isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-transparent bg-gray-50 dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <img src={`https://flagcdn.com/w40/${c.code}.png`} alt={c.name} className="w-6 rounded-sm shadow-sm" />
-                    <span className={`font-semibold text-sm ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                      {c.name}
-                    </span>
-                  </button>
-                )
-              })}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Country Selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">Select Country</label>
+              <div 
+                onClick={() => { setSearchQuery(''); setIsCountryModalOpen(true); }}
+                className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
+              >
+                <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
+                  {selectedCountryObj ? (
+                    <>
+                      <img src={`https://flagcdn.com/w40/${selectedCountryObj.code}.png`} alt="flag" className="w-6 rounded-sm" />
+                      {selectedCountryObj.name}
+                    </>
+                  ) : (
+                    <span className="text-gray-400">Loading countries...</span>
+                  )}
+                </div>
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Select Service</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {SERVICES.map(srv => {
-                const isSelected = serviceId === srv.id;
-                return (
-                  <button
-                    key={srv.id}
-                    type="button"
-                    onClick={() => setServiceId(srv.id)}
-                    className={`flex items-center gap-3 p-3 rounded-2xl transition-all border-2 text-left ${
-                      isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-transparent bg-gray-50 dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <div className="flex-shrink-0 bg-white dark:bg-gray-900 p-1.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800">
-                      {srv.icon}
-                    </div>
-                    <span className={`font-semibold text-sm truncate ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                      {srv.name}
-                    </span>
-                  </button>
-                )
-              })}
+            {/* Service Selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">Select Service</label>
+              <div 
+                onClick={() => { setSearchQuery(''); setIsServiceModalOpen(true); }}
+                className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
+              >
+                <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
+                  {selectedServiceObj ? (
+                    <>
+                      {getServiceIcon(selectedServiceObj.id)}
+                      {selectedServiceObj.name}
+                    </>
+                  ) : (
+                    <span className="text-gray-400">Loading services...</span>
+                  )}
+                </div>
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              </div>
             </div>
           </div>
 
           <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between mb-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl">
               <span className="text-gray-600 dark:text-gray-400 font-medium">Cost</span>
-              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                {totalCharge.toLocaleString()} XAF
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                  ${priceUSD.toFixed(2)}
+                </span>
+                <span className="text-sm font-semibold text-gray-500">
+                  ({priceXAF.toLocaleString()} XAF)
+                </span>
+              </div>
             </div>
             
             <button 
               onClick={handlePurchase}
-              disabled={loading}
+              disabled={loading || !selectedServiceObj || !selectedCountryObj}
               className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg transition-all shadow-lg shadow-indigo-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Get Number'}
@@ -365,8 +439,11 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
             <h3 className="text-lg font-bold text-gray-900 dark:text-white px-2">Your Active Numbers</h3>
             
             {activeOrders.map(order => {
-              const country = COUNTRIES.find(c => c.id === order.country);
-              const service = SERVICES.find(s => s.id === order.service);
+              // Try to find full name, fallback to ID if not loaded
+              const country = countries.find(c => c.id === order.country);
+              const countryName = country?.name || order.country;
+              const countryCode = country?.code || 'us'; // Fallback flag
+              const serviceName = order.service.charAt(0).toUpperCase() + order.service.slice(1);
 
               return (
                 <div key={order.id} className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-200 dark:border-gray-800 relative overflow-hidden group transition-all">
@@ -379,10 +456,10 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
                     {/* Left Info */}
                     <div className="space-y-3 flex-1">
                       <div className="flex items-center gap-2">
-                        {country && <img src={`https://flagcdn.com/w40/${country.code}.png`} alt={country.name} className="w-5 rounded-sm shadow-sm" />}
+                        <img src={`https://flagcdn.com/w40/${countryCode}.png`} alt={countryName} className="w-5 rounded-sm shadow-sm" />
                         <span className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                          {service?.icon}
-                          {service?.name} ({country?.name})
+                          {getServiceIcon(order.service)}
+                          {serviceName} ({countryName})
                         </span>
                         {!order.sms_code && (
                           <div className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-500 rounded-full text-xs font-bold">
@@ -464,6 +541,114 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
           </div>
         </div>
       </div>
+
+      {/* --- MODALS --- */}
+      
+      {/* Country Modal */}
+      {isCountryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsCountryModalOpen(false)}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 max-h-[85vh] flex flex-col"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select Country</h3>
+              <button onClick={() => setIsCountryModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4 relative">
+              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder="Search country..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none dark:text-white transition-all"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-1">
+              {filteredCountries.map(cat => (
+                <div 
+                  key={cat.id} 
+                  onClick={() => { setCountryId(cat.id); setIsCountryModalOpen(false); }}
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
+                >
+                  <div className="flex items-center gap-4">
+                    <img src={`https://flagcdn.com/w40/${cat.code}.png`} alt="flag" className="w-6 rounded-sm" />
+                    <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${countryId === cat.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                    {countryId === cat.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
+                  </div>
+                </div>
+              ))}
+              {filteredCountries.length === 0 && (
+                <div className="p-4 text-center text-gray-500">No countries found.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Service Modal */}
+      {isServiceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsServiceModalOpen(false)}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 max-h-[85vh] flex flex-col"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select Service</h3>
+              <button onClick={() => setIsServiceModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4 relative">
+              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder="Search service (e.g. WhatsApp)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none dark:text-white transition-all"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-1">
+              {filteredServices.map(srv => (
+                <div 
+                  key={srv.id} 
+                  onClick={() => { setServiceId(srv.id); setIsServiceModalOpen(false); }}
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
+                >
+                  <div className="flex items-center gap-3">
+                    {getServiceIcon(srv.id)}
+                    <span className="font-semibold text-gray-900 dark:text-white">{srv.name}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
+                      ${(srv.price * 10).toFixed(2)}
+                    </div>
+                    <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                      {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredServices.length === 0 && (
+                <div className="p-4 text-center text-gray-500">No services found.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
