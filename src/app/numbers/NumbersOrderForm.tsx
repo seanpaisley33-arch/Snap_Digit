@@ -37,7 +37,11 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   return <span>⏳ Expires in {timeLeft}</span>;
 }
 
-const getCalculatedPrice = (basePrice: number) => {
+const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: string) => {
+  if (countryId === 'canada' && serviceId === 'facebook') {
+    return basePrice * 4;
+  }
+  
   if (basePrice >= 0.4) return basePrice * 2;
   if (basePrice >= 0.1) return basePrice * 3;
   if (basePrice >= 0.01) return basePrice * 10;
@@ -105,9 +109,14 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
         const cArr = Object.keys(cData).map(key => {
           const isoObj = cData[key].iso || {};
           const isoCode = Object.keys(isoObj)[0] || 'us';
+          
+          let displayName = cData[key].text_en;
+          if (key === 'england') displayName = 'United Kingdom (UK)';
+          if (key === 'usa') displayName = 'United States (USA)';
+          
           return {
             id: key,
-            name: cData[key].text_en,
+            name: displayName,
             code: isoCode.toLowerCase()
           };
         }).sort((a, b) => a.name.localeCompare(b.name));
@@ -182,7 +191,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   const selectedCountryObj = countries.find(c => c.id === countryId);
   const selectedServiceObj = services.find(s => s.id === serviceId);
 
-  const priceUSD = selectedServiceObj ? getCalculatedPrice(selectedServiceObj.price) : 0;
+  const priceUSD = selectedServiceObj ? getCalculatedPrice(selectedServiceObj.price, countryId, serviceId) : 0;
   const priceXAF = Math.round(priceUSD * exchangeRate);
 
   const handlePurchase = async (e: React.FormEvent) => {
@@ -640,7 +649,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
-                      ${getCalculatedPrice(srv.price).toFixed(2)}
+                      ${getCalculatedPrice(srv.price, countryId, srv.id).toFixed(2)}
                     </div>
                     <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
                       {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
