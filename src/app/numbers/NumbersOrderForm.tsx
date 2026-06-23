@@ -62,7 +62,14 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   const [countryId, setCountryId] = useState(COUNTRIES[0].id);
   const [serviceId, setServiceId] = useState(SERVICES[0].id);
   const [loading, setLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
 
@@ -178,12 +185,13 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
         // Refresh balance
         const balRes = await supabase.from('profiles').select('wallet_balance').eq('id', session?.user.id).single();
         if (balRes.data) setBalance(Number(balRes.data.wallet_balance));
+        showToast('Order cancelled successfully', 'success');
       } else {
-        alert(data.error || 'Failed to cancel order.');
+        showToast(data.error || 'Failed to cancel order.', 'error');
         setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, isCancelling: false } : o));
       }
     } catch (e) {
-      alert('An error occurred while cancelling.');
+      showToast('An error occurred while cancelling.', 'error');
       setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, isCancelling: false } : o));
     }
   };
@@ -237,12 +245,24 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
+    showToast('Copied to clipboard!', 'success');
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
       
+      {/* Toast Notification Card */}
+      {toast && (
+        <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-center gap-3 px-6 py-3.5 rounded-2xl shadow-2xl border ${
+          toast.type === 'success' 
+            ? 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-700 text-green-800 dark:text-green-100' 
+            : 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-800 dark:text-red-100'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+          <span className="font-bold">{toast.message}</span>
+        </div>
+      )}
+
       {/* Left Column: Form & Active Orders */}
       <div className="lg:col-span-2 space-y-6">
         
