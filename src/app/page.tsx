@@ -23,14 +23,15 @@ const itemVariants = {
 
 export default function Home() {
   return (
-    <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="flex flex-col gap-16 pb-12"
-    >
+    <div className="flex flex-col gap-16 pb-12 overflow-hidden">
       {/* Hero Section */}
-      <section className="relative px-6 pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden">
+      <motion.section 
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: false, amount: 0.1 }}
+        className="relative px-6 pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden"
+      >
         <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-gray-950 -z-10" />
         <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-purple-50/50 to-transparent dark:from-purple-900/10 -z-10 blur-3xl" />
         
@@ -60,10 +61,16 @@ export default function Home() {
             </Link>
           </motion.div>
         </motion.div>
-      </section>
+      </motion.section>
 
       {/* Stats Section */}
-      <motion.section variants={itemVariants} className="px-6">
+      <motion.section 
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: false, amount: 0.3 }}
+        className="px-6"
+      >
         <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
             { label: 'Active Users', value: '10K+' },
@@ -84,9 +91,16 @@ export default function Home() {
       </motion.section>
 
       {/* Services Section */}
-      <motion.section variants={itemVariants} id="services" className="px-6">
+      <motion.section 
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: false, amount: 0.2 }}
+        id="services" 
+        className="px-6"
+      >
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
+          <motion.div variants={itemVariants} className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Our Services</h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Premium digital assets delivered instantly to your dashboard upon purchase.</p>
           </div>
@@ -166,6 +180,6 @@ export default function Home() {
           </div>
         </div>
       </motion.section>
-    </motion.div>
+    </div>
   );
 }
