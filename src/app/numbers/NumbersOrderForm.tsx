@@ -38,10 +38,21 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 }
 
 const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: string) => {
+  // Canada Facebook exception
   if (countryId === 'canada' && serviceId === 'facebook') {
     return basePrice * 5;
   }
   
+  // Google / Google Voice exceptions
+  if (serviceId === 'google' || serviceId === 'google_voice') {
+    if (basePrice >= 0.3) {
+      return basePrice * 10;
+    } else {
+      return basePrice * 15;
+    }
+  }
+  
+  // Standard tiered logic
   if (basePrice >= 0.4) return basePrice * 2;
   if (basePrice >= 0.1) return basePrice * 3;
   if (basePrice >= 0.01) return basePrice * 10;
