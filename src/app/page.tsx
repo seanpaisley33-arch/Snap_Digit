@@ -108,6 +108,7 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             {/* Service 1 */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -10 }}
               className="group rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-8 hover:shadow-xl transition-all duration-300 relative overflow-hidden"
             >
@@ -132,6 +133,7 @@ export default function Home() {
 
             {/* Service 2 */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -10 }}
               className="group rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-8 hover:shadow-xl transition-all duration-300 relative overflow-hidden"
             >
@@ -156,6 +158,7 @@ export default function Home() {
 
             {/* Service 3 */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -10 }}
               className="group rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-8 hover:shadow-xl transition-all duration-300 relative overflow-hidden"
             >
