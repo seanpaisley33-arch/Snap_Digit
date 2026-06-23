@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Phone, Zap, Users, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { motion, useInView, useSpring, useTransform } from 'framer-motion';
+import { motion, useInView, useSpring, useTransform, Variants } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 
 // Counter Component for animating numbers
@@ -26,7 +26,7 @@ function AnimatedCounter({ value, suffix = '', prefix = '', decimals = 0 }: { va
   return <motion.span ref={ref}>{display}</motion.span>;
 }
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -34,7 +34,7 @@ const containerVariants = {
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   show: { 
     opacity: 1, 
