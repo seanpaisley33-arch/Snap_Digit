@@ -70,6 +70,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   const [activeOrders, setActiveOrders] = useState<BoostOrder[]>([]);
+  const [showAllOrders, setShowAllOrders] = useState(false);
 
   // Modals state
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -104,7 +105,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
         .eq('user_id', session.user.id)
         .eq('service_type', 'boost')
         .order('created_at', { ascending: false })
-        .limit(10); // Fetch recent 10 orders
+        .limit(50); // Fetch recent 50 orders
 
       if (data && data.length > 0) {
         setActiveOrders(data as BoostOrder[]);
@@ -351,80 +352,93 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
               No recent orders found.
             </div>
           ) : (
-            <div className="space-y-3">
-              {activeOrders.map(order => {
-                const catObj = CATEGORIES.find(c => c.id === order.details.platform);
-                return (
-                  <div key={order.id} className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-                    
-                    {/* Status Banner */}
-                    <div className={`absolute left-0 top-0 w-1.5 h-full ${
-                      order.status === 'processing' ? 'bg-yellow-400' :
-                      order.status === 'completed' ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
-
-                    <div className="pl-3 flex flex-col space-y-3">
+            <>
+              <div className="space-y-3">
+                {(showAllOrders ? activeOrders : activeOrders.slice(0, 5)).map(order => {
+                  const catObj = CATEGORIES.find(c => c.id === order.details.platform);
+                  return (
+                    <div key={order.id} className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                       
-                      {/* Top Row: Service & Status */}
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                          {catObj?.icon}
-                          <span className="font-bold text-gray-900 dark:text-white text-sm">
-                            {order.details.service}
-                          </span>
-                        </div>
+                      {/* Status Banner */}
+                      <div className={`absolute left-0 top-0 w-1.5 h-full ${
+                        order.status === 'processing' ? 'bg-yellow-400' :
+                        order.status === 'completed' ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
+
+                      <div className="pl-3 flex flex-col space-y-3">
                         
-                        <div className={`text-[11px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${
-                          order.status === 'processing' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500' :
-                          order.status === 'completed' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-500' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-500'
-                        }`}>
-                          {order.status === 'processing' ? 'In Progress' : 
-                           order.status === 'completed' ? 'Completed' : 'Cancelled'}
+                        {/* Top Row: Service & Status */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            {catObj?.icon}
+                            <span className="font-bold text-gray-900 dark:text-white text-sm">
+                              {order.details.service}
+                            </span>
+                          </div>
+                          
+                          <div className={`text-[11px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${
+                            order.status === 'processing' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500' :
+                            order.status === 'completed' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-500' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-500'
+                          }`}>
+                            {order.status === 'processing' ? 'In Progress' : 
+                             order.status === 'completed' ? 'Completed' : 'Cancelled'}
+                          </div>
                         </div>
+
+                        {/* Middle Row: Link */}
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg break-all">
+                          <LinkIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="line-clamp-1">{order.details.link}</span>
+                        </div>
+
+                        {/* Bottom Row: Quantity, Cost, Actions */}
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-black text-gray-900 dark:text-white">
+                              {order.details.quantity.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Quantity</span>
+                          </div>
+                          
+                          <div className="flex flex-col text-right">
+                            <span className="text-sm font-black text-pink-600 dark:text-pink-400">
+                              {order.cost} XAF
+                            </span>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Cost</span>
+                          </div>
+                        </div>
+
+                        {/* Cancel Action if Processing */}
+                        {order.status === 'processing' && (
+                          <div className="pt-2 border-t border-gray-100 dark:border-gray-800 mt-2">
+                            <button 
+                              onClick={() => handleCancelOrder(order.id)}
+                              disabled={order.isCancelling}
+                              className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                            >
+                              {order.isCancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                              {order.isCancelling ? 'Cancelling...' : 'Cancel & Refund'}
+                            </button>
+                          </div>
+                        )}
+
                       </div>
-
-                      {/* Middle Row: Link */}
-                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg break-all">
-                        <LinkIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="line-clamp-1">{order.details.link}</span>
-                      </div>
-
-                      {/* Bottom Row: Quantity, Cost, Actions */}
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-black text-gray-900 dark:text-white">
-                            {order.details.quantity.toLocaleString()}
-                          </span>
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Quantity</span>
-                        </div>
-                        
-                        <div className="flex flex-col text-right">
-                          <span className="text-sm font-black text-pink-600 dark:text-pink-400">
-                            {order.cost} XAF
-                          </span>
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Cost</span>
-                        </div>
-                      </div>
-
-                      {/* Cancel Action if Processing */}
-                      {order.status === 'processing' && (
-                        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 mt-2">
-                          <button 
-                            onClick={() => handleCancelOrder(order.id)}
-                            disabled={order.isCancelling}
-                            className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
-                          >
-                            {order.isCancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                            {order.isCancelling ? 'Cancelling...' : 'Cancel & Refund'}
-                          </button>
-                        </div>
-                      )}
-
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              
+              {activeOrders.length > 5 && (
+                <div className="pt-2">
+                  <button 
+                    onClick={() => setShowAllOrders(!showAllOrders)}
+                    className="w-full py-3 bg-gray-50 hover:bg-gray-100 dark:bg-[#2C2C2E] dark:hover:bg-[#3A3A3C] text-gray-700 dark:text-gray-300 rounded-2xl text-sm font-bold transition-colors"
+                  >
+                    {showAllOrders ? 'Show Less' : 'View All Orders'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

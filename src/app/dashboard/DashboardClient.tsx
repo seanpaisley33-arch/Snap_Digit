@@ -9,6 +9,7 @@ export default function DashboardClient({ profile, transactions }: { profile: an
   const [isFunding, setIsFunding] = useState(false);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -106,32 +107,44 @@ export default function DashboardClient({ profile, transactions }: { profile: an
           {transactions.length === 0 ? (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">No transactions yet.</div>
           ) : (
-            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-              {transactions.map((t) => (
-                <li key={t.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-full ${t.type === 'deposit' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
-                      {t.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+            <>
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+                {(showAllTransactions ? transactions : transactions.slice(0, 5)).map((t) => (
+                  <li key={t.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-full ${t.type === 'deposit' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                        {t.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white capitalize">{t.type}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(t.created_at).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white capitalize">{t.type}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(t.created_at).toLocaleDateString()}</p>
+                    <div className="text-right">
+                      <p className={`font-bold ${t.type === 'deposit' ? 'text-green-600' : 'text-orange-600'}`}>
+                        {t.type === 'deposit' ? '+' : '-'} {Number(t.amount).toLocaleString()} XAF
+                      </p>
+                      <div className="flex items-center justify-end gap-1 text-xs mt-1 font-medium capitalize text-gray-500">
+                        {t.status === 'success' && <CheckCircle className="w-3 h-3 text-green-500" />}
+                        {t.status === 'pending' && <Clock className="w-3 h-3 text-yellow-500" />}
+                        {t.status === 'failed' && <XCircle className="w-3 h-3 text-red-500" />}
+                        {t.status}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-bold ${t.type === 'deposit' ? 'text-green-600' : 'text-orange-600'}`}>
-                      {t.type === 'deposit' ? '+' : '-'} {Number(t.amount).toLocaleString()} XAF
-                    </p>
-                    <div className="flex items-center justify-end gap-1 text-xs mt-1 font-medium capitalize text-gray-500">
-                      {t.status === 'success' && <CheckCircle className="w-3 h-3 text-green-500" />}
-                      {t.status === 'pending' && <Clock className="w-3 h-3 text-yellow-500" />}
-                      {t.status === 'failed' && <XCircle className="w-3 h-3 text-red-500" />}
-                      {t.status}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+              {transactions.length > 5 && (
+                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
+                  <button 
+                    onClick={() => setShowAllTransactions(!showAllTransactions)}
+                    className="w-full py-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                  >
+                    {showAllTransactions ? 'Show Less' : 'View All Transactions'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
