@@ -8,6 +8,12 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'SnapDigit | Digital Services Marketplace',
   description: 'Instantly purchase virtual numbers, social media boosts, and ready-made accounts.',
+  applicationName: 'SnapDigit',
+  appleWebApp: {
+    title: 'SnapDigit',
+    capable: true,
+    statusBarStyle: 'default',
+  },
 };
 
 export default function RootLayout({
