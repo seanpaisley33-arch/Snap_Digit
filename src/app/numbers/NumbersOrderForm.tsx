@@ -31,6 +31,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   const [countryId, setCountryId] = useState(COUNTRIES[0].id);
   const [serviceId, setServiceId] = useState(SERVICES[0].id);
   const [loading, setLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   // Active Order State
@@ -98,6 +99,37 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
       setErrorMsg('An unexpected error occurred.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!activeOrderId) return;
+    setCancelLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ orderId: activeOrderId })
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.status === 'cancelled') {
+        setIsWaitingSms(false);
+        setActiveNumber('');
+        setErrorMsg('Order cancelled and refunded successfully.');
+        const balRes = await supabase.from('profiles').select('wallet_balance').eq('id', session?.user.id).single();
+        if (balRes.data) setBalance(Number(balRes.data.wallet_balance));
+      } else {
+        alert(data.error || 'Failed to cancel order.');
+      }
+    } catch (e) {
+      alert('An error occurred while cancelling.');
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -292,9 +324,18 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
               </div>
 
               {isWaitingSms ? (
-                <div className="flex flex-col items-center justify-center h-40 text-gray-500 dark:text-gray-400 space-y-4">
+                <div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400 space-y-4">
                   <RefreshCw className="w-8 h-8 animate-spin text-indigo-200 dark:text-indigo-900" />
                   <p>Waiting for SMS code from {currentService?.name}...</p>
+                  
+                  <button 
+                    onClick={handleCancelOrder}
+                    disabled={cancelLoading}
+                    className="mt-6 px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                  >
+                    {cancelLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {cancelLoading ? 'Cancelling...' : 'Number rejected? Cancel & Refund'}
+                  </button>
                 </div>
               ) : smsCode ? (
                 <div className="animate-in fade-in slide-in-from-bottom-4">
