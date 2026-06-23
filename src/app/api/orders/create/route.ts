@@ -143,18 +143,9 @@ export async function POST(req: Request) {
         });
 
       } else {
-        // Simulating a 1-second API call for Boost services
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Update order to success
-        await supabaseAdmin
-          .from('orders')
-          .update({ status: 'completed' })
-          .eq('id', order.id);
-
         return NextResponse.json({ 
-          message: 'Order completed successfully', 
-          order: { ...order, status: 'completed' },
+          message: 'Order placed successfully', 
+          order: { ...order, status: 'processing' },
           newBalance: newBalance
         });
       }

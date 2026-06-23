@@ -33,6 +33,29 @@ export async function POST(req: Request) {
        return NextResponse.json({ error: 'Only processing orders can be cancelled' }, { status: 400 });
     }
 
+    if (order.service_type === 'boost') {
+      // Refund the user immediately for Boost orders
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('wallet_balance')
+        .eq('id', user.id)
+        .single();
+        
+      if (profile) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ wallet_balance: Number(profile.wallet_balance) + Number(order.cost) })
+          .eq('id', user.id);
+      }
+
+      await supabaseAdmin
+        .from('orders')
+        .update({ status: 'cancelled', details: { ...order.details, error: 'Cancelled by user' } })
+        .eq('id', order.id);
+
+      return NextResponse.json({ status: 'cancelled', message: 'Order cancelled and refunded.' });
+    }
+
     const providerOrderId = order.details?.provider_order_id;
     if (!providerOrderId) return NextResponse.json({ error: 'Provider order ID not found' }, { status: 400 });
 

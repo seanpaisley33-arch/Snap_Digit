@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Wallet, Loader2, Link as LinkIcon, Hash, CheckCircle2, ChevronDown, Plus, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Wallet, Loader2, CheckCircle2, ChevronDown, Plus, X, XCircle, Clock, Link as LinkIcon } from 'lucide-react';
 import { FaTiktok, FaInstagram, FaYoutube, FaTelegram, FaFacebook } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -45,15 +45,31 @@ const SERVICES = {
   ]
 };
 
+interface BoostOrder {
+  id: string;
+  status: string;
+  cost: number;
+  created_at: string;
+  details: {
+    platform: string;
+    service: string;
+    link: string;
+    quantity: number;
+  };
+  isCancelling?: boolean;
+}
+
 export default function BoostOrderForm({ initialBalance }: { initialBalance: number }) {
   const [balance, setBalance] = useState(initialBalance);
   const [category, setCategory] = useState(CATEGORIES[0].id);
   const [serviceId, setServiceId] = useState(SERVICES['instagram'][0].id);
   const [link, setLink] = useState('');
   const [quantity, setQuantity] = useState('');
+  
   const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  const [activeOrders, setActiveOrders] = useState<BoostOrder[]>([]);
 
   // Modals state
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -72,6 +88,31 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
     return (qty / 1000) * (selectedService?.ratePer1000 || 0);
   }, [quantity, selectedService]);
 
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    const fetchActiveOrders = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('service_type', 'boost')
+        .order('created_at', { ascending: false })
+        .limit(10); // Fetch recent 10 orders
+
+      if (data && data.length > 0) {
+        setActiveOrders(data as BoostOrder[]);
+      }
+    };
+    fetchActiveOrders();
+  }, [supabase]);
+
   const handleCategorySelect = (newCat: string) => {
     setCategory(newCat);
     setServiceId(SERVICES[newCat as keyof typeof SERVICES][0].id);
@@ -86,18 +127,16 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
 
     const qty = parseInt(quantity);
     if (qty < selectedService.min || qty > selectedService.max) {
-      setErrorMsg(`Quantity must be between ${selectedService.min} and ${selectedService.max}`);
+      showToast(`Quantity must be between ${selectedService.min} and ${selectedService.max}`, 'error');
       setLoading(false);
       return;
     }
 
     if (totalCharge > balance) {
-      setErrorMsg('Insufficient balance. Please fund your wallet.');
+      showToast('Insufficient balance. Please fund your wallet.', 'error');
       setLoading(false);
       return;
     }
@@ -126,24 +165,71 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(data.error || 'Failed to place order');
+        showToast(data.error || 'Failed to place order', 'error');
       } else {
-        setSuccessMsg(`Order placed successfully! Order ID: ${data.order.id.split('-')[0]}`);
+        showToast(`Order placed successfully! ID: ${data.order.id.split('-')[0]}`, 'success');
         setBalance(data.newBalance);
         setLink('');
         setQuantity('');
+        
+        // Add to active orders at the top
+        setActiveOrders(prev => [data.order as BoostOrder, ...prev]);
       }
     } catch (err) {
-      setErrorMsg('An unexpected error occurred.');
+      showToast('An unexpected error occurred.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
+  const handleCancelOrder = async (orderId: string) => {
+    setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, isCancelling: true } : o));
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ orderId })
+      });
+      const data = await res.json();
       
-      {/* Top Bar with Balance (Exobooster style) */}
+      if (res.ok && data.status === 'cancelled') {
+        showToast('Order cancelled and refunded successfully.', 'success');
+        // Update local state to cancelled
+        setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled', isCancelling: false } : o));
+        
+        const balRes = await supabase.from('profiles').select('wallet_balance').eq('id', session?.user.id).single();
+        if (balRes.data) setBalance(Number(balRes.data.wallet_balance));
+      } else {
+        showToast(data.error || 'Failed to cancel order.', 'error');
+        setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, isCancelling: false } : o));
+      }
+    } catch (e) {
+      showToast('An error occurred while cancelling.', 'error');
+      setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, isCancelling: false } : o));
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 relative">
+      
+      {/* Toast Notification Card */}
+      {toast && (
+        <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-center gap-3 px-6 py-3.5 rounded-2xl shadow-2xl border ${
+          toast.type === 'success' 
+            ? 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-700 text-green-800 dark:text-green-100' 
+            : 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-800 dark:text-red-100'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+          <span className="font-bold">{toast.message}</span>
+        </div>
+      )}
+
+      {/* Top Bar with Balance */}
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200 dark:border-gray-800">
         <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-600">
           SnapDigit Booster
@@ -159,115 +245,191 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
         </button>
       </div>
 
-      <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-5 md:p-8 shadow-xl border border-gray-100 dark:border-gray-800">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         
-        {successMsg && (
-          <div className="p-4 mb-6 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-xl flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5" />
-            <span className="font-medium">{successMsg}</span>
-          </div>
-        )}
+        {/* Left Column: The Form */}
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-5 md:p-8 shadow-xl border border-gray-100 dark:border-gray-800">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            
+            {/* Category Input */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Category</label>
+              <div 
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
+              >
+                <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
+                  {currentCategoryObj?.icon}
+                  {currentCategoryObj?.name}
+                </div>
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              </div>
+            </div>
 
-        {errorMsg && (
-          <div className="p-4 mb-6 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-xl font-medium">
-            {errorMsg}
-          </div>
-        )}
+            {/* Service Input */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Service</label>
+              <div 
+                onClick={() => setIsServiceModalOpen(true)}
+                className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
+              >
+                <div className="text-gray-900 dark:text-white font-medium truncate pr-4 text-sm">
+                  {selectedService?.name}
+                </div>
+                <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              </div>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Description Box */}
+            <div className="bg-[#F8F9FA] dark:bg-[#2C2C2E] p-4 rounded-2xl border border-gray-200 dark:border-[#3A3A3C] text-sm text-gray-600 dark:text-gray-300">
+              <p className="font-bold text-gray-800 dark:text-white mb-2">Note:</p>
+              <ul className="list-decimal list-inside space-y-1 text-xs">
+                <li>Please ensure your account is public.</li>
+                <li>Enter the correct link format.</li>
+                <li>Rate: <strong className="text-gray-900 dark:text-white">{selectedService?.ratePer1000} XAF</strong> per 1000.</li>
+              </ul>
+            </div>
+
+            {/* Link */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Link</label>
+              <input 
+                type="url"
+                required
+                placeholder="https://..."
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                className="w-full px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 dark:text-white transition-all outline-none"
+              />
+            </div>
+
+            {/* Quantity */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Quantity</label>
+              <input 
+                type="number"
+                required
+                min={selectedService?.min}
+                max={selectedService?.max}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-full px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 dark:text-white transition-all outline-none"
+              />
+              <p className="text-[11px] text-gray-500 ml-1">
+                Min: {selectedService?.min.toLocaleString()} - Max: {selectedService?.max.toLocaleString()}
+              </p>
+            </div>
+
+            {/* Charge */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Charge</label>
+              <div className="w-full px-4 py-3.5 bg-gray-100 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl text-gray-500 cursor-not-allowed font-semibold">
+                {totalCharge > 0 ? totalCharge.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '0'} XAF
+              </div>
+            </div>
+
+            {/* Submit */}
+            <div className="pt-2">
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-[#1C1C1E] dark:bg-white text-white dark:text-black rounded-full font-bold transition-all hover:opacity-90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Place Order'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Right Column: Active Orders */}
+        <div className="space-y-4">
+          <h3 className="font-bold text-lg text-gray-900 dark:text-white px-2">Order History</h3>
           
-          {/* Category Input */}
-          <div className="space-y-1.5">
-            <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Category</label>
-            <div 
-              onClick={() => setIsCategoryModalOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
-            >
-              <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
-                {currentCategoryObj?.icon}
-                {currentCategoryObj?.name}
-              </div>
-              <ChevronDown className="w-5 h-5 text-gray-400" />
+          {activeOrders.length === 0 ? (
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-8 text-center border border-gray-100 dark:border-gray-800 shadow-sm text-gray-500">
+              No recent orders found.
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              {activeOrders.map(order => {
+                const catObj = CATEGORIES.find(c => c.id === order.details.platform);
+                return (
+                  <div key={order.id} className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                    
+                    {/* Status Banner */}
+                    <div className={`absolute left-0 top-0 w-1.5 h-full ${
+                      order.status === 'processing' ? 'bg-yellow-400' :
+                      order.status === 'completed' ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
 
-          {/* Service Input */}
-          <div className="space-y-1.5">
-            <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Service</label>
-            <div 
-              onClick={() => setIsServiceModalOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
-            >
-              <div className="text-gray-900 dark:text-white font-medium truncate pr-4 text-sm">
-                {selectedService?.name}
-              </div>
-              <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div className="pl-3 flex flex-col space-y-3">
+                      
+                      {/* Top Row: Service & Status */}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                          {catObj?.icon}
+                          <span className="font-bold text-gray-900 dark:text-white text-sm">
+                            {order.details.service}
+                          </span>
+                        </div>
+                        
+                        <div className={`text-[11px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${
+                          order.status === 'processing' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500' :
+                          order.status === 'completed' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-500' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-500'
+                        }`}>
+                          {order.status === 'processing' ? 'In Progress' : 
+                           order.status === 'completed' ? 'Completed' : 'Cancelled'}
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Link */}
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg break-all">
+                        <LinkIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="line-clamp-1">{order.details.link}</span>
+                      </div>
+
+                      {/* Bottom Row: Quantity, Cost, Actions */}
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-black text-gray-900 dark:text-white">
+                            {order.details.quantity.toLocaleString()}
+                          </span>
+                          <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Quantity</span>
+                        </div>
+                        
+                        <div className="flex flex-col text-right">
+                          <span className="text-sm font-black text-pink-600 dark:text-pink-400">
+                            {order.cost} XAF
+                          </span>
+                          <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Cost</span>
+                        </div>
+                      </div>
+
+                      {/* Cancel Action if Processing */}
+                      {order.status === 'processing' && (
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 mt-2">
+                          <button 
+                            onClick={() => handleCancelOrder(order.id)}
+                            disabled={order.isCancelling}
+                            className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                          >
+                            {order.isCancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                            {order.isCancelling ? 'Cancelling...' : 'Cancel & Refund'}
+                          </button>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Description Box */}
-          <div className="bg-[#F8F9FA] dark:bg-[#2C2C2E] p-4 rounded-2xl border border-gray-200 dark:border-[#3A3A3C] text-sm text-gray-600 dark:text-gray-300">
-            <p className="font-bold text-gray-800 dark:text-white mb-2">Note:</p>
-            <ul className="list-decimal list-inside space-y-1 text-xs">
-              <li>Please ensure your account is public.</li>
-              <li>Enter the correct link format.</li>
-              <li>Rate: <strong className="text-gray-900 dark:text-white">{selectedService?.ratePer1000} XAF</strong> per 1000.</li>
-            </ul>
-          </div>
-
-          {/* Link */}
-          <div className="space-y-1.5">
-            <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Link</label>
-            <input 
-              type="url"
-              required
-              placeholder="https://..."
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className="w-full px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 dark:text-white transition-all outline-none"
-            />
-          </div>
-
-          {/* Quantity */}
-          <div className="space-y-1.5">
-            <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Quantity</label>
-            <input 
-              type="number"
-              required
-              min={selectedService?.min}
-              max={selectedService?.max}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="w-full px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 dark:text-white transition-all outline-none"
-            />
-            <p className="text-[11px] text-gray-500 ml-1">
-              Min: {selectedService?.min.toLocaleString()} - Max: {selectedService?.max.toLocaleString()}
-            </p>
-          </div>
-
-          {/* Charge */}
-          <div className="space-y-1.5">
-            <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Charge</label>
-            <div className="w-full px-4 py-3.5 bg-gray-100 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl text-gray-500 cursor-not-allowed">
-              {totalCharge > 0 ? totalCharge.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '0'} XAF
-            </div>
-          </div>
-
-          {/* Submit */}
-          <div className="pt-2">
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-[#1C1C1E] dark:bg-white text-white dark:text-black rounded-full font-bold transition-all hover:opacity-90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit'}
-            </button>
-          </div>
-        </form>
       </div>
 
-      {/* --- MODALS (Bottom Sheets) --- */}
-
+      {/* --- MODALS --- */}
       {/* Category Modal */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsCategoryModalOpen(false)}>
