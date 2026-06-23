@@ -44,7 +44,7 @@ const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: str
   }
   
   // Google / Google Voice exceptions
-  if (serviceId === 'google' || serviceId === 'google_voice') {
+  if (serviceId === 'google' || serviceId === 'googlevoice') {
     if (basePrice >= 0.3) {
       return basePrice * 10;
     } else {
