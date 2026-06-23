@@ -5,6 +5,7 @@ import { Wallet, Loader2, CheckCircle2, ChevronDown, Plus, X, XCircle, Clock, Li
 import { FaTiktok, FaInstagram, FaYoutube, FaTelegram, FaFacebook } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CATEGORIES = [
   { id: 'instagram', name: 'Instagram', icon: <FaInstagram className="w-5 h-5 text-pink-500" /> },
@@ -219,17 +220,23 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
   return (
     <div className="max-w-4xl mx-auto space-y-6 relative">
       
-      {/* Toast Notification Card */}
-      {toast && (
-        <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-center gap-3 px-6 py-3.5 rounded-2xl shadow-2xl border ${
-          toast.type === 'success' 
-            ? 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-700 text-green-800 dark:text-green-100' 
-            : 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-800 dark:text-red-100'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-          <span className="font-bold">{toast.message}</span>
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3.5 rounded-2xl shadow-2xl border ${
+              toast.type === 'success' 
+                ? 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-700 text-green-800 dark:text-green-100' 
+                : 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-800 dark:text-red-100'
+            }`}
+          >
+            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+            <span className="font-bold">{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top Bar with Balance */}
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200 dark:border-gray-800">
@@ -250,7 +257,12 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         
         {/* Left Column: The Form */}
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-5 md:p-8 shadow-xl border border-gray-100 dark:border-gray-800">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, type: 'spring', stiffness: 120, damping: 15 }}
+          className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-5 md:p-8 shadow-xl border border-gray-100 dark:border-gray-800"
+        >
           <form onSubmit={handleSubmit} className="space-y-5">
             
             {/* Category Input */}
@@ -332,16 +344,18 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
 
             {/* Submit */}
             <div className="pt-2">
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 40px rgba(236, 72, 153, 0.3)' }}
+                whileTap={{ scale: 0.97 }}
                 type="submit"
                 disabled={loading}
                 className="w-full py-3.5 bg-[#1C1C1E] dark:bg-white text-white dark:text-black rounded-full font-bold transition-all hover:opacity-90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Place Order'}
-              </button>
+              </motion.button>
             </div>
           </form>
-        </div>
+        </motion.div>
 
         {/* Right Column: Active Orders */}
         <div className="space-y-4">
@@ -354,10 +368,16 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
           ) : (
             <>
               <div className="space-y-3">
-                {(showAllOrders ? activeOrders : activeOrders.slice(0, 5)).map(order => {
+                {(showAllOrders ? activeOrders : activeOrders.slice(0, 5)).map((order, i) => {
                   const catObj = CATEGORIES.find(c => c.id === order.details.platform);
                   return (
-                    <div key={order.id} className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                    <motion.div 
+                      key={order.id} 
+                      initial={{ opacity: 0, x: -25 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.06, type: 'spring', stiffness: 150, damping: 18 }}
+                      className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                    >
                       
                       {/* Status Banner */}
                       <div className={`absolute left-0 top-0 w-1.5 h-full ${
@@ -423,7 +443,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
                         )}
 
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -445,72 +465,94 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
       </div>
 
       {/* --- MODALS --- */}
-      {/* Category Modal */}
-      {isCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsCategoryModalOpen(false)}>
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 max-h-[85vh] flex flex-col"
+      <AnimatePresence>
+        {isCategoryModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" 
+            onClick={() => setIsCategoryModalOpen(false)}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select a social media</h3>
-              <button onClick={() => setIsCategoryModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto pr-2 space-y-1">
-              {CATEGORIES.map(cat => (
-                <div 
-                  key={cat.id} 
-                  onClick={() => handleCategorySelect(cat.id)}
-                  className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
-                >
-                  <div className="flex items-center gap-4">
-                    {cat.icon}
-                    <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select a social media</h3>
+                <button onClick={() => setIsCategoryModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto pr-2 space-y-1">
+                {CATEGORIES.map(cat => (
+                  <div 
+                    key={cat.id} 
+                    onClick={() => handleCategorySelect(cat.id)}
+                    className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
+                  >
+                    <div className="flex items-center gap-4">
+                      {cat.icon}
+                      <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${category === cat.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                      {category === cat.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
+                    </div>
                   </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${category === cat.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                    {category === cat.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Service Modal */}
-      {isServiceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsServiceModalOpen(false)}>
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 max-h-[85vh] flex flex-col"
+      <AnimatePresence>
+        {isServiceModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" 
+            onClick={() => setIsServiceModalOpen(false)}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select a service</h3>
-              <button onClick={() => setIsServiceModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto pr-2 space-y-1">
-              {currentServices.map(srv => (
-                <div 
-                  key={srv.id} 
-                  onClick={() => handleServiceSelect(srv.id)}
-                  className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
-                >
-                  <span className="font-medium text-[15px] text-gray-900 dark:text-white pr-4">{srv.name}</span>
-                  <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                    {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select a service</h3>
+                <button onClick={() => setIsServiceModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto pr-2 space-y-1">
+                {currentServices.map(srv => (
+                  <div 
+                    key={srv.id} 
+                    onClick={() => handleServiceSelect(srv.id)}
+                    className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
+                  >
+                    <span className="font-medium text-[15px] text-gray-900 dark:text-white pr-4">{srv.name}</span>
+                    <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                      {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

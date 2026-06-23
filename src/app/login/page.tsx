@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { Zap, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -35,22 +36,64 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+      <motion.div 
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 100, damping: 15, duration: 0.6 }}
+        className="w-full max-w-md space-y-8 bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 relative overflow-hidden"
+      >
+        {/* Animated gradient bar */}
+        <motion.div 
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
+          className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500 origin-left"
+        />
         
-        <div className="text-center">
-          <Zap className="mx-auto h-12 w-12 text-indigo-600 dark:text-indigo-400" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="text-center"
+        >
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }}
+          >
+            <Zap className="mx-auto h-12 w-12 text-indigo-600 dark:text-indigo-400" />
+          </motion.div>
+          <motion.h2 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white"
+          >
             Welcome Back
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+            className="mt-2 text-sm text-gray-600 dark:text-gray-400"
+          >
             Sign in to access your digital wallet
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+        <motion.form 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+          className="mt-8 space-y-6" 
+          onSubmit={handleLogin}
+        >
           <div className="space-y-4">
-            <div>
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6, type: 'spring', stiffness: 150, damping: 15 }}
+            >
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email Address
               </label>
@@ -62,8 +105,12 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
               />
-            </div>
-            <div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.7, type: 'spring', stiffness: 150, damping: 15 }}
+            >
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Password
               </label>
@@ -75,31 +122,45 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
               />
-            </div>
+            </motion.div>
           </div>
 
-          {error && (
-            <div className="text-red-500 text-sm font-medium text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
-              {error}
-            </div>
-          )}
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-red-500 text-sm font-medium text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl overflow-hidden"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: '0 10px 40px rgba(99, 102, 241, 0.3)' }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={loading}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
-          </button>
-        </form>
+          </motion.button>
+        </motion.form>
         
-        <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400"
+        >
           Don't have an account?{' '}
           <Link href="/signup" className="font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
             Create an account
           </Link>
-        </p>
-      </div>
+        </motion.p>
+      </motion.div>
     </div>
   );
 }
