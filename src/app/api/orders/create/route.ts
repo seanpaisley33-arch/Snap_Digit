@@ -167,8 +167,8 @@ export async function POST(req: Request) {
           'fb_views': 9999,
           'fb_comments': 6598,
           'fb_reviews': 9999,
-          'tg_members': 9999,
-          'tg_views': 9999,
+          'tg_members': 7102,
+          'tg_views': 8811,
         };
 
         const japServiceId = JAP_SERVICE_MAP[details.serviceId];
