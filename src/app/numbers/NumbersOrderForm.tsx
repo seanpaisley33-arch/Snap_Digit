@@ -104,7 +104,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
     const initData = async () => {
       // Fetch Exchange Rate
       try {
-        const erRes = await fetch('https://open.er-api.com/v6/latest/USD');
+        const erRes = await fetch('/api/exchange-rate');
         const erData = await erRes.json();
         if (erData?.rates?.XAF) {
           setExchangeRate(erData.rates.XAF);
@@ -115,7 +115,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
 
       // Fetch Countries
       try {
-        const cRes = await fetch('https://5sim.net/v1/guest/countries');
+        const cRes = await fetch('/api/5sim/countries');
         const cData = await cRes.json();
         const cArr = Object.keys(cData).map(key => {
           const isoObj = cData[key].iso || {};
@@ -145,7 +145,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
     const fetchServices = async () => {
       if (!countryId) return;
       try {
-        const sRes = await fetch(`https://5sim.net/v1/guest/products/${countryId}/any`);
+        const sRes = await fetch(`/api/5sim/products?country=${countryId}`);
         const sData = await sRes.json();
         const sArr = Object.keys(sData).map(key => {
           return {
