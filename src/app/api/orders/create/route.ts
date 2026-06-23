@@ -142,10 +142,79 @@ export async function POST(req: Request) {
           newBalance: newBalance
         });
 
-      } else {
+      } else if (service_type === 'boost') {
+        
+        // --- JUST ANOTHER PANEL INTEGRATION ---
+        const apiKey = process.env.JAP_API_KEY;
+        if (!apiKey) throw new Error("JAP_API_KEY is missing");
+
+        // MAP INTERNAL IDs TO REAL JAP IDs
+        // TODO: USER MUST REPLACE 9999 WITH ACTUAL IDs FROM JUSTANOTHERPANEL.COM
+        const JAP_SERVICE_MAP: Record<string, number> = {
+          'tk_views': 9999,
+          'tk_likes': 9999,
+          'tk_followers': 9999,
+          'ig_likes': 9999,
+          'ig_followers': 9999,
+          'yt_views': 9999,
+          'yt_subs': 9999,
+          'fb_page_followers': 9999,
+          'fb_profile_followers': 9999,
+          'fb_likes': 9999,
+          'fb_emoji': 9999,
+          'fb_shares': 9999,
+          'fb_groups': 9999,
+          'fb_views': 9999,
+          'fb_comments': 9999,
+          'fb_reviews': 9999,
+          'tg_members': 9999,
+          'tg_views': 9999,
+        };
+
+        const japServiceId = JAP_SERVICE_MAP[details.serviceId];
+        if (!japServiceId) throw new Error("Invalid Boost Service ID mapped");
+
+        const japRes = await fetch('https://justanotherpanel.com/api/v2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: apiKey,
+            action: 'add',
+            service: japServiceId,
+            link: details.link,
+            quantity: details.quantity
+          })
+        });
+
+        const japText = await japRes.text();
+        let japData;
+        try { japData = JSON.parse(japText); } catch(e) { japData = { error: japText }; }
+
+        if (!japRes.ok || japData.error) {
+          // Refund user
+          await supabaseAdmin
+            .from('profiles')
+            .update({ wallet_balance: Number(profile.wallet_balance) })
+            .eq('id', user.id);
+            
+          await supabaseAdmin
+            .from('orders')
+            .update({ status: 'failed_provider', details: { ...details, error: japData.error || 'JAP Error' } })
+            .eq('id', order.id);
+
+          return NextResponse.json({ error: `Provider Error: ${japData.error || 'Failed'}` }, { status: 502 });
+        }
+
+        const updatedDetails = { ...details, provider_order_id: japData.order };
+        
+        await supabaseAdmin
+          .from('orders')
+          .update({ status: 'processing', details: updatedDetails })
+          .eq('id', order.id);
+
         return NextResponse.json({ 
           message: 'Order placed successfully', 
-          order: { ...order, status: 'processing' },
+          order: { ...order, status: 'processing', details: updatedDetails },
           newBalance: newBalance
         });
       }

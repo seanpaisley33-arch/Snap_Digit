@@ -156,6 +156,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
           details: {
             platform: category,
             service: selectedService.name,
+            serviceId: selectedService.id,
             link: link,
             quantity: qty
           }
