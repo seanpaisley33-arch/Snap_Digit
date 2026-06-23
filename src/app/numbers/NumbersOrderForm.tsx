@@ -39,7 +39,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
 const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: string) => {
   if (countryId === 'canada' && serviceId === 'facebook') {
-    return basePrice * 4;
+    return basePrice * 5;
   }
   
   if (basePrice >= 0.4) return basePrice * 2;
