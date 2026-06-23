@@ -86,8 +86,8 @@ export async function POST(req: Request) {
         const FIVE_SIM_COUNTRIES: Record<string, string> = { us: 'usa', uk: 'england', ca: 'canada', fr: 'france', ng: 'nigeria', za: 'southafrica' };
         const FIVE_SIM_SERVICES: Record<string, string> = { whatsapp: 'whatsapp', telegram: 'telegram', google_voice: 'google', openai: 'openai', tinder: 'tinder', facebook: 'facebook', textplus: 'textplus' };
         
-        const countryName = FIVE_SIM_COUNTRIES[details.countryId] || 'any';
-        const productName = FIVE_SIM_SERVICES[details.serviceId] || 'other';
+        const countryName = FIVE_SIM_COUNTRIES[details.country] || 'any';
+        const productName = FIVE_SIM_SERVICES[details.service] || 'other';
         const apiKey = process.env.FIVESIM_API_KEY;
         
         if (!apiKey) throw new Error("FIVESIM_API_KEY is missing");
