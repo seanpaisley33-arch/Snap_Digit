@@ -2,7 +2,29 @@
 
 import Link from 'next/link';
 import { Phone, Zap, Users, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, useInView, useSpring, useTransform } from 'framer-motion';
+import { useEffect, useRef } from 'react';
+
+// Counter Component for animating numbers
+function AnimatedCounter({ value, suffix = '', prefix = '', decimals = 0 }: { value: number, suffix?: string, prefix?: string, decimals?: number }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: false, amount: 0.5 });
+  const spring = useSpring(0, { bounce: 0, duration: 2000 });
+  
+  const display = useTransform(spring, (current) => {
+    return prefix + current.toFixed(decimals) + suffix;
+  });
+
+  useEffect(() => {
+    if (isInView) {
+      spring.set(value);
+    } else {
+      spring.set(0);
+    }
+  }, [isInView, spring, value]);
+
+  return <motion.span ref={ref}>{display}</motion.span>;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -73,17 +95,19 @@ export default function Home() {
       >
         <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { label: 'Active Users', value: '10K+' },
-            { label: 'Orders Processed', value: '1M+' },
-            { label: 'Success Rate', value: '99.9%' },
-            { label: 'Support Response', value: '< 5m' },
+            { label: 'Active Users', value: 10, suffix: 'K+' },
+            { label: 'Orders Processed', value: 1, suffix: 'M+' },
+            { label: 'Success Rate', value: 99.9, suffix: '%', decimals: 1 },
+            { label: 'Support Response', value: 5, prefix: '< ', suffix: 'm' },
           ].map((stat) => (
             <motion.div 
               key={stat.label} 
               whileHover={{ y: -5, scale: 1.02 }}
               className="p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-center transition-shadow hover:shadow-md cursor-default"
             >
-              <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">{stat.value}</div>
+              <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                <AnimatedCounter value={stat.value} suffix={stat.suffix} prefix={stat.prefix} decimals={stat.decimals} />
+              </div>
               <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</div>
             </motion.div>
           ))}
