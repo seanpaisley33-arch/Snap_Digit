@@ -407,10 +407,10 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Country Selector */}
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">Select Country</label>
               <div 
-                onClick={() => { setSearchQuery(''); setIsCountryModalOpen(true); }}
+                onClick={() => { setSearchQuery(''); setIsCountryModalOpen(!isCountryModalOpen); }}
                 className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
               >
                 <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
@@ -423,15 +423,64 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
                     <span className="text-gray-400">Loading countries...</span>
                   )}
                 </div>
-                <ChevronDown className="w-5 h-5 text-gray-400" />
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isCountryModalOpen ? 'rotate-180' : ''}`} />
               </div>
+
+              <AnimatePresence>
+                {isCountryModalOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsCountryModalOpen(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-[calc(100%+8px)] left-0 w-full z-50 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#3A3A3C] overflow-hidden flex flex-col max-h-[350px]"
+                    >
+                      <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+                        <div className="relative">
+                          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input 
+                            type="text" 
+                            placeholder="Search country..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none dark:text-white transition-all"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 overflow-y-auto">
+                        {filteredCountries.map(cat => (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => { setCountryId(cat.id); setIsCountryModalOpen(false); }}
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#2C2C2E] last:border-0"
+                          >
+                            <div className="flex items-center gap-4">
+                              <img src={`https://flagcdn.com/w40/${cat.code}.png`} alt="flag" className="w-6 rounded-sm" />
+                              <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${countryId === cat.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                              {countryId === cat.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
+                            </div>
+                          </div>
+                        ))}
+                        {filteredCountries.length === 0 && (
+                          <div className="p-4 text-center text-sm text-gray-500">No countries found.</div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Service Selector */}
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">Select Service</label>
               <div 
-                onClick={() => { setSearchQuery(''); setIsServiceModalOpen(true); }}
+                onClick={() => { setSearchQuery(''); setIsServiceModalOpen(!isServiceModalOpen); }}
                 className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
               >
                 <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
@@ -444,8 +493,62 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
                     <span className="text-gray-400">Loading services...</span>
                   )}
                 </div>
-                <ChevronDown className="w-5 h-5 text-gray-400" />
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isServiceModalOpen ? 'rotate-180' : ''}`} />
               </div>
+
+              <AnimatePresence>
+                {isServiceModalOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsServiceModalOpen(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-[calc(100%+8px)] left-0 w-full z-50 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#3A3A3C] overflow-hidden flex flex-col max-h-[350px]"
+                    >
+                      <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+                        <div className="relative">
+                          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input 
+                            type="text" 
+                            placeholder="Search service..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none dark:text-white transition-all"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 overflow-y-auto">
+                        {filteredServices.map(srv => (
+                          <div 
+                            key={srv.id} 
+                            onClick={() => { setServiceId(srv.id); setIsServiceModalOpen(false); }}
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#2C2C2E] last:border-0"
+                          >
+                            <div className="flex items-center gap-3">
+                              {getServiceIcon(srv.id)}
+                              <span className="font-semibold text-gray-900 dark:text-white">{srv.name}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
+                                ${getCalculatedPrice(srv.price, countryId, srv.id).toFixed(2)}
+                              </div>
+                              <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                                {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {filteredServices.length === 0 && (
+                          <div className="p-4 text-center text-sm text-gray-500">No services found.</div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -593,137 +696,6 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
           </div>
         </motion.div>
       </div>
-
-      {/* --- MODALS --- */}
-      
-      {/* Country Modal */}
-      <AnimatePresence>
-        {isCountryModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm" 
-            onClick={() => setIsCountryModalOpen(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: 'spring', bounce: 0.3, duration: 0.4 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select Country</h3>
-                <button onClick={() => setIsCountryModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="mb-4 relative">
-                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search country..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none dark:text-white transition-all"
-                  autoFocus
-                />
-              </div>
-              
-              <div className="flex-1 overflow-y-auto pr-2 space-y-1">
-                {filteredCountries.map(cat => (
-                  <div 
-                    key={cat.id} 
-                    onClick={() => { setCountryId(cat.id); setIsCountryModalOpen(false); }}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <img src={`https://flagcdn.com/w40/${cat.code}.png`} alt="flag" className="w-6 rounded-sm" />
-                      <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${countryId === cat.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {countryId === cat.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
-                    </div>
-                  </div>
-                ))}
-                {filteredCountries.length === 0 && (
-                  <div className="p-4 text-center text-gray-500">No countries found.</div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Service Modal */}
-      <AnimatePresence>
-        {isServiceModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm" 
-            onClick={() => setIsServiceModalOpen(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: 'spring', bounce: 0.3, duration: 0.4 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select Service</h3>
-                <button onClick={() => setIsServiceModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="mb-4 relative">
-                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search service (e.g. WhatsApp)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none dark:text-white transition-all"
-                  autoFocus
-                />
-              </div>
-              
-              <div className="flex-1 overflow-y-auto pr-2 space-y-1">
-                {filteredServices.map(srv => (
-                  <div 
-                    key={srv.id} 
-                    onClick={() => { setServiceId(srv.id); setIsServiceModalOpen(false); }}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
-                  >
-                    <div className="flex items-center gap-3">
-                      {getServiceIcon(srv.id)}
-                      <span className="font-semibold text-gray-900 dark:text-white">{srv.name}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
-                        ${getCalculatedPrice(srv.price, countryId, srv.id).toFixed(2)}
-                      </div>
-                      <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                        {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {filteredServices.length === 0 && (
-                  <div className="p-4 text-center text-gray-500">No services found.</div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );

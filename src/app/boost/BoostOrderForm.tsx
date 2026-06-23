@@ -266,32 +266,93 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
           <form onSubmit={handleSubmit} className="space-y-5">
             
             {/* Category Input */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 relative">
               <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Category</label>
               <div 
-                onClick={() => setIsCategoryModalOpen(true)}
+                onClick={() => setIsCategoryModalOpen(!isCategoryModalOpen)}
                 className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
               >
                 <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
                   {currentCategoryObj?.icon}
                   {currentCategoryObj?.name}
                 </div>
-                <ChevronDown className="w-5 h-5 text-gray-400" />
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isCategoryModalOpen ? 'rotate-180' : ''}`} />
               </div>
+
+              <AnimatePresence>
+                {isCategoryModalOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsCategoryModalOpen(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-[calc(100%+8px)] left-0 w-full z-50 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#3A3A3C] overflow-hidden flex flex-col max-h-[300px]"
+                    >
+                      <div className="flex-1 overflow-y-auto">
+                        {CATEGORIES.map(cat => (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => handleCategorySelect(cat.id)}
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#2C2C2E] last:border-0"
+                          >
+                            <div className="flex items-center gap-4">
+                              {cat.icon}
+                              <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${category === cat.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                              {category === cat.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Service Input */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 relative">
               <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Service</label>
               <div 
-                onClick={() => setIsServiceModalOpen(true)}
+                onClick={() => setIsServiceModalOpen(!isServiceModalOpen)}
                 className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
               >
                 <div className="text-gray-900 dark:text-white font-medium truncate pr-4 text-sm">
                   {selectedService?.name}
                 </div>
-                <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <ChevronDown className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${isServiceModalOpen ? 'rotate-180' : ''}`} />
               </div>
+
+              <AnimatePresence>
+                {isServiceModalOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsServiceModalOpen(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-[calc(100%+8px)] left-0 w-full z-50 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#3A3A3C] overflow-hidden flex flex-col max-h-[300px]"
+                    >
+                      <div className="flex-1 overflow-y-auto">
+                        {currentServices.map(srv => (
+                          <div 
+                            key={srv.id} 
+                            onClick={() => handleServiceSelect(srv.id)}
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#2C2C2E] last:border-0"
+                          >
+                            <span className="font-medium text-[15px] text-gray-900 dark:text-white pr-4">{srv.name}</span>
+                            <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                              {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Description Box */}
@@ -463,96 +524,6 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
         </div>
 
       </div>
-
-      {/* --- MODALS --- */}
-      <AnimatePresence>
-        {isCategoryModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm" 
-            onClick={() => setIsCategoryModalOpen(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: 'spring', bounce: 0.3, duration: 0.4 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select a social media</h3>
-                <button onClick={() => setIsCategoryModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto pr-2 space-y-1">
-                {CATEGORIES.map(cat => (
-                  <div 
-                    key={cat.id} 
-                    onClick={() => handleCategorySelect(cat.id)}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
-                  >
-                    <div className="flex items-center gap-4">
-                      {cat.icon}
-                      <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${category === cat.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {category === cat.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isServiceModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm" 
-            onClick={() => setIsServiceModalOpen(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: 'spring', bounce: 0.3, duration: 0.4 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full sm:max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select a service</h3>
-                <button onClick={() => setIsServiceModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto pr-2 space-y-1">
-                {currentServices.map(srv => (
-                  <div 
-                    key={srv.id} 
-                    onClick={() => handleServiceSelect(srv.id)}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] rounded-2xl cursor-pointer transition-colors border border-transparent dark:border-[#2C2C2E]"
-                  >
-                    <span className="font-medium text-[15px] text-gray-900 dark:text-white pr-4">{srv.name}</span>
-                    <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-pink-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-pink-500 rounded-full" />}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
