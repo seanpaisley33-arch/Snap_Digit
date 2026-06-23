@@ -151,12 +151,12 @@ export async function POST(req: Request) {
         // MAP INTERNAL IDs TO REAL JAP IDs
         // TODO: USER MUST REPLACE 9999 WITH ACTUAL IDs FROM JUSTANOTHERPANEL.COM
         const JAP_SERVICE_MAP: Record<string, number> = {
-          'tk_views': 9999,
-          'tk_likes': 9999,
-          'tk_followers': 9999,
+          'tk_views': 8970,
+          'tk_likes': 8101,
+          'tk_followers': 8610,
           'ig_likes': 10130,     // us Instagram Likes [USA]
           'ig_followers': 10129, // us Instagram Followers [USA]
-          'yt_views': 9999,
+          'yt_views': 5971,
           'yt_subs': 9999,
           'fb_page_followers': 7867,
           'fb_profile_followers': 10044,
