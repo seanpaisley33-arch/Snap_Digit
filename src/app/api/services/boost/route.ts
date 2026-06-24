@@ -104,6 +104,11 @@ export async function GET() {
       console.warn('Failed to reach JAP API (Timeout/Network). Using static fallbacks.', fetchErr);
     }
 
+    // --- ADMIN OVERRIDES ---
+    // Ensure Facebook Group Members is exactly 1000 XAF regardless of dynamic multiplier
+    ratesXAF['fb_groups'] = 1000;
+    ratesUSD['fb_groups'] = 1000 / usdToXafRate;
+
     return NextResponse.json({ ratesXAF, ratesUSD });
 
   } catch (err: any) {
