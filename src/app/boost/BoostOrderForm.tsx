@@ -17,32 +17,32 @@ const CATEGORIES = [
 
 const SERVICES = {
   tiktok: [
-    { id: 'tk_views', name: 'Video/Reel Views', ratePer1000: 5, min: 100, max: 100000 },
-    { id: 'tk_likes', name: 'Post Likes', ratePer1000: 150, min: 50, max: 20000 },
-    { id: 'tk_followers', name: 'Profile Followers', ratePer1000: 800, min: 100, max: 50000 },
+    { id: 'tk_views', name: 'Video/Reel Views', ratePer1000: 10, min: 100, max: 100000 },
+    { id: 'tk_likes', name: 'Post Likes', ratePer1000: 300, min: 50, max: 20000 },
+    { id: 'tk_followers', name: 'Profile Followers', ratePer1000: 1600, min: 100, max: 50000 },
   ],
   instagram: [
-    { id: 'ig_likes', name: 'Post Likes', ratePer1000: 40, min: 50, max: 50000 },
-    { id: 'ig_followers', name: 'Profile Followers', ratePer1000: 600, min: 100, max: 100000 },
+    { id: 'ig_likes', name: 'Post Likes', ratePer1000: 80, min: 50, max: 50000 },
+    { id: 'ig_followers', name: 'Profile Followers', ratePer1000: 1200, min: 100, max: 100000 },
   ],
   youtube: [
-    { id: 'yt_views', name: 'Video/Reel Views', ratePer1000: 900, min: 1000, max: 1000000 },
-    { id: 'yt_subs', name: 'Channel Subscribers', ratePer1000: 2500, min: 50, max: 5000 },
+    { id: 'yt_views', name: 'Video/Reel Views', ratePer1000: 1800, min: 1000, max: 1000000 },
+    { id: 'yt_subs', name: 'Channel Subscribers', ratePer1000: 5000, min: 50, max: 5000 },
   ],
   facebook: [
-    { id: 'fb_page_followers', name: 'Page Followers', ratePer1000: 500, min: 100, max: 50000 },
-    { id: 'fb_profile_followers', name: 'Profile Followers', ratePer1000: 450, min: 100, max: 20000 },
-    { id: 'fb_likes', name: 'Post Likes', ratePer1000: 200, min: 50, max: 50000 },
-    { id: 'fb_emoji', name: 'Emoji post reactions', ratePer1000: 300, min: 50, max: 10000 },
-    { id: 'fb_shares', name: 'Post Shares', ratePer1000: 400, min: 50, max: 10000 },
-    { id: 'fb_groups', name: 'Group Members', ratePer1000: 800, min: 100, max: 20000 },
-    { id: 'fb_views', name: 'Video/Reel Views', ratePer1000: 150, min: 100, max: 100000 },
-    { id: 'fb_comments', name: 'Custom Comments', ratePer1000: 1500, min: 10, max: 1000 },
-    { id: 'fb_reviews', name: 'Page Reviews', ratePer1000: 2000, min: 10, max: 500 },
+    { id: 'fb_page_followers', name: 'Page Followers', ratePer1000: 1000, min: 100, max: 50000 },
+    { id: 'fb_profile_followers', name: 'Profile Followers', ratePer1000: 900, min: 100, max: 20000 },
+    { id: 'fb_likes', name: 'Post Likes', ratePer1000: 400, min: 50, max: 50000 },
+    { id: 'fb_emoji', name: 'Emoji post reactions', ratePer1000: 600, min: 50, max: 10000 },
+    { id: 'fb_shares', name: 'Post Shares', ratePer1000: 800, min: 50, max: 10000 },
+    { id: 'fb_groups', name: 'Group Members', ratePer1000: 1600, min: 100, max: 20000 },
+    { id: 'fb_views', name: 'Video/Reel Views', ratePer1000: 300, min: 100, max: 100000 },
+    { id: 'fb_comments', name: 'Custom Comments', ratePer1000: 3000, min: 10, max: 1000 },
+    { id: 'fb_reviews', name: 'Page Reviews', ratePer1000: 4000, min: 10, max: 500 },
   ],
   telegram: [
-    { id: 'tg_members', name: 'Group/Channel Members', ratePer1000: 400, min: 100, max: 50000 },
-    { id: 'tg_views', name: 'Post Views', ratePer1000: 10, min: 100, max: 100000 },
+    { id: 'tg_members', name: 'Group/Channel Members', ratePer1000: 800, min: 100, max: 50000 },
+    { id: 'tg_views', name: 'Post Views', ratePer1000: 20, min: 100, max: 100000 },
   ]
 };
 
