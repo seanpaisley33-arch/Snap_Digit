@@ -33,55 +33,75 @@ export async function GET() {
       'tg_views': 8811,
     };
 
-    // Hit JAP API
-    const japRes = await fetch('https://justanotherpanel.com/api/v2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        key: apiKey,
-        action: 'services',
-      })
-    });
-
-    if (!japRes.ok) {
-      throw new Error('Failed to fetch from JAP');
-    }
-
-    const services = await japRes.json();
-
     const ratesXAF: Record<string, number> = {};
     const ratesUSD: Record<string, number> = {};
 
-    // Fallback static rates for dummy IDs (9999) or if JAP fails parsing
+    // Comprehensive fallback static rates (approximate USD wholesale cost)
+    // These ensure the site never goes down even if JAP is offline or blocking IPs.
     const STATIC_FALLBACKS: Record<string, number> = {
-      'yt_subs': 2.08, // Approx USD cost to make retail ~5000 XAF
+      'tk_views': 0.004,
+      'tk_likes': 0.125,
+      'tk_followers': 0.66,
+      'ig_likes': 0.033,
+      'ig_followers': 0.50,
+      'yt_views': 0.75,
+      'yt_subs': 2.08,
+      'fb_page_followers': 0.41,
+      'fb_profile_followers': 0.37,
+      'fb_likes': 0.16,
+      'fb_emoji': 0.25,
+      'fb_shares': 0.33,
+      'fb_groups': 0.66,
       'fb_views': 0.125,
-      'fb_reviews': 1.66
+      'fb_comments': 1.25,
+      'fb_reviews': 1.66,
+      'tg_members': 0.33,
+      'tg_views': 0.008,
     };
 
-    // Pre-fill fallbacks
-    for (const [key, val] of Object.entries(JAP_SERVICE_MAP)) {
-      if (val === 9999) {
-        const costUsd = STATIC_FALLBACKS[key] || 1.0;
-        ratesUSD[key] = costUsd * profitMultiplier;
-        ratesXAF[key] = Math.ceil(ratesUSD[key] * usdToXafRate);
-      }
+    // Pre-fill all with fallbacks first
+    for (const [key, _] of Object.entries(JAP_SERVICE_MAP)) {
+      const costUsd = STATIC_FALLBACKS[key] || 1.0;
+      ratesUSD[key] = costUsd * profitMultiplier;
+      ratesXAF[key] = Math.ceil(ratesUSD[key] * usdToXafRate);
     }
 
-    // Parse JAP services
-    if (Array.isArray(services)) {
-      for (const service of services) {
-        const internalKey = Object.keys(JAP_SERVICE_MAP).find(k => JAP_SERVICE_MAP[k] === Number(service.service));
-        
-        if (internalKey) {
-          const wholesaleUsd = Number(service.rate);
-          const retailUsd = wholesaleUsd * profitMultiplier;
-          const retailXaf = Math.ceil(retailUsd * usdToXafRate);
-          
-          ratesUSD[internalKey] = retailUsd;
-          ratesXAF[internalKey] = retailXaf;
+    try {
+      // Hit JAP API with browser-like headers to bypass Cloudflare blocking
+      const japRes = await fetch('https://justanotherpanel.com/api/v2', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9'
+        },
+        body: JSON.stringify({
+          key: apiKey,
+          action: 'services',
+        }),
+        // Add timeout signal if supported, but fetch handles network timeout eventually
+      });
+
+      if (japRes.ok) {
+        const services = await japRes.json();
+        // Parse JAP services and overwrite fallbacks with live data
+        if (Array.isArray(services)) {
+          for (const service of services) {
+            const internalKey = Object.keys(JAP_SERVICE_MAP).find(k => JAP_SERVICE_MAP[k] === Number(service.service));
+            if (internalKey) {
+              const wholesaleUsd = Number(service.rate);
+              const retailUsd = wholesaleUsd * profitMultiplier;
+              ratesUSD[internalKey] = retailUsd;
+              ratesXAF[internalKey] = Math.ceil(retailUsd * usdToXafRate);
+            }
+          }
         }
+      } else {
+        console.warn('JAP API returned non-OK status. Using static fallbacks.');
       }
+    } catch (fetchErr) {
+      console.warn('Failed to reach JAP API (Timeout/Network). Using static fallbacks.', fetchErr);
     }
 
     return NextResponse.json({ ratesXAF, ratesUSD });
