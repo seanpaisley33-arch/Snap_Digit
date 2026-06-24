@@ -62,7 +62,8 @@ export async function GET() {
     // Pre-fill all with fallbacks first
     for (const [key, _] of Object.entries(JAP_SERVICE_MAP)) {
       const costUsd = STATIC_FALLBACKS[key] || 1.0;
-      ratesUSD[key] = costUsd * profitMultiplier;
+      const effectiveMultiplier = key === 'fb_groups' ? profitMultiplier * 2 : profitMultiplier;
+      ratesUSD[key] = costUsd * effectiveMultiplier;
       ratesXAF[key] = Math.ceil(ratesUSD[key] * usdToXafRate);
     }
 
@@ -91,7 +92,8 @@ export async function GET() {
             const internalKey = Object.keys(JAP_SERVICE_MAP).find(k => JAP_SERVICE_MAP[k] === Number(service.service));
             if (internalKey) {
               const wholesaleUsd = Number(service.rate);
-              const retailUsd = wholesaleUsd * profitMultiplier;
+              const effectiveMultiplier = internalKey === 'fb_groups' ? profitMultiplier * 2 : profitMultiplier;
+              const retailUsd = wholesaleUsd * effectiveMultiplier;
               ratesUSD[internalKey] = retailUsd;
               ratesXAF[internalKey] = Math.ceil(retailUsd * usdToXafRate);
             }
@@ -103,11 +105,6 @@ export async function GET() {
     } catch (fetchErr) {
       console.warn('Failed to reach JAP API (Timeout/Network). Using static fallbacks.', fetchErr);
     }
-
-    // --- ADMIN OVERRIDES ---
-    // Ensure Facebook Group Members is exactly 1000 XAF regardless of dynamic multiplier
-    ratesXAF['fb_groups'] = 1000;
-    ratesUSD['fb_groups'] = 1000 / usdToXafRate;
 
     return NextResponse.json({ ratesXAF, ratesUSD });
 
