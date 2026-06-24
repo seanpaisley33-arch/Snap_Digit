@@ -15,7 +15,7 @@ const CATEGORIES = [
   { id: 'youtube', name: 'YouTube', icon: <FaYoutube className="w-5 h-5 text-red-600" /> },
 ];
 
-const SERVICES = {
+const INITIAL_SERVICES = {
   tiktok: [
     { id: 'tk_views', name: 'Video/Reel Views', ratePer1000: 10, min: 100, max: 100000 },
     { id: 'tk_likes', name: 'Post Likes', ratePer1000: 300, min: 50, max: 20000 },
@@ -61,9 +61,13 @@ interface BoostOrder {
 }
 
 export default function BoostOrderForm({ initialBalance }: { initialBalance: number }) {
+  const [servicesMap, setServicesMap] = useState<typeof INITIAL_SERVICES>(INITIAL_SERVICES);
+  const [usdRates, setUsdRates] = useState<Record<string, number>>({});
+  const [pricesLoaded, setPricesLoaded] = useState(false);
+
   const [balance, setBalance] = useState(initialBalance);
   const [category, setCategory] = useState(CATEGORIES[0].id);
-  const [serviceId, setServiceId] = useState(SERVICES['instagram'][0].id);
+  const [serviceId, setServiceId] = useState(INITIAL_SERVICES['instagram'][0].id);
   const [link, setLink] = useState('');
   const [quantity, setQuantity] = useState('');
   
@@ -81,7 +85,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
   const supabase = createClient();
 
   const currentCategoryObj = CATEGORIES.find(c => c.id === category);
-  const currentServices = SERVICES[category as keyof typeof SERVICES] || [];
+  const currentServices = servicesMap[category as keyof typeof INITIAL_SERVICES] || [];
   const selectedService = currentServices.find(s => s.id === serviceId) || currentServices[0];
 
   const totalCharge = useMemo(() => {
@@ -89,6 +93,13 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
     if (isNaN(qty) || qty <= 0) return 0;
     return (qty / 1000) * (selectedService?.ratePer1000 || 0);
   }, [quantity, selectedService]);
+
+  const totalChargeUsd = useMemo(() => {
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty <= 0) return 0;
+    const usdRate = usdRates[selectedService?.id] || 0;
+    return (qty / 1000) * usdRate;
+  }, [quantity, selectedService, usdRates]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -113,11 +124,34 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
       }
     };
     fetchActiveOrders();
+
+    const fetchPrices = async () => {
+      try {
+        const res = await fetch('/api/services/boost');
+        const data = await res.json();
+        if (data.ratesXAF) {
+          const updatedServices = { ...INITIAL_SERVICES };
+          for (const cat in updatedServices) {
+            updatedServices[cat as keyof typeof INITIAL_SERVICES] = updatedServices[cat as keyof typeof INITIAL_SERVICES].map(srv => ({
+              ...srv,
+              ratePer1000: data.ratesXAF[srv.id] || srv.ratePer1000
+            }));
+          }
+          setServicesMap(updatedServices);
+          setUsdRates(data.ratesUSD || {});
+        }
+      } catch (err) {
+        console.error('Failed to load live prices', err);
+      } finally {
+        setPricesLoaded(true);
+      }
+    };
+    fetchPrices();
   }, [supabase]);
 
   const handleCategorySelect = (newCat: string) => {
     setCategory(newCat);
-    setServiceId(SERVICES[newCat as keyof typeof SERVICES][0].id);
+    setServiceId(servicesMap[newCat as keyof typeof INITIAL_SERVICES][0].id);
     setIsCategoryModalOpen(false);
   };
 
@@ -361,7 +395,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
               <ul className="list-decimal list-inside space-y-1 text-xs">
                 <li>Please ensure your account is public.</li>
                 <li>Enter the correct link format.</li>
-                <li>Rate: <strong className="text-gray-900 dark:text-white">{selectedService?.ratePer1000} XAF</strong> per 1000.</li>
+                <li>Rate: <strong className="text-gray-900 dark:text-white">{selectedService?.ratePer1000} XAF {usdRates[selectedService?.id] ? `($${usdRates[selectedService?.id].toFixed(2)})` : ''}</strong> per 1000.</li>
               </ul>
             </div>
 
@@ -398,8 +432,15 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
             {/* Charge */}
             <div className="space-y-1.5">
               <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">Charge</label>
-              <div className="w-full px-4 py-3.5 bg-gray-100 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl text-gray-500 cursor-not-allowed font-semibold">
-                {totalCharge > 0 ? totalCharge.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '0'} XAF
+              <div className="w-full px-4 py-3.5 bg-gray-100 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl text-gray-500 cursor-not-allowed font-semibold flex justify-between items-center">
+                <span>
+                  {totalCharge > 0 ? totalCharge.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '0'} XAF
+                </span>
+                {totalChargeUsd > 0 && (
+                  <span className="text-xs text-gray-400">
+                    (${totalChargeUsd.toFixed(2)})
+                  </span>
+                )}
               </div>
             </div>
 
@@ -409,10 +450,11 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
                 whileHover={{ scale: 1.02, boxShadow: '0 10px 40px rgba(236, 72, 153, 0.3)' }}
                 whileTap={{ scale: 0.97 }}
                 type="submit"
-                disabled={loading}
+                disabled={loading || !pricesLoaded}
                 className="w-full py-3.5 bg-[#1C1C1E] dark:bg-white text-white dark:text-black rounded-full font-bold transition-all hover:opacity-90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Place Order'}
+                {!pricesLoaded ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (!pricesLoaded ? 'Loading Live Prices...' : 'Place Order')}
               </motion.button>
             </div>
           </form>
