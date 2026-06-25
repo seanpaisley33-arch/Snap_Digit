@@ -17,15 +17,19 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    console.log('Fapshi Webhook Received:', body);
+    
     const { status, amount, externalId, transId } = body;
 
     // externalId maps to our transaction.id
     if (!externalId) {
+      console.error('Webhook Error: Missing externalId');
       return NextResponse.json({ error: 'Missing externalId' }, { status: 400 });
     }
 
     // 2. Process Successful Payment
-    if (status === 'SUCCESSFUL') {
+    const paymentStatus = String(status).toUpperCase();
+    if (paymentStatus === 'SUCCESSFUL') {
       // First, get the transaction to ensure it's pending and get the user_id
       const { data: transaction, error: fetchError } = await supabaseAdmin
         .from('transactions')
