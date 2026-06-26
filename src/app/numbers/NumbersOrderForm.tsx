@@ -43,25 +43,38 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 }
 
 const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: string) => {
+  let calculated = basePrice;
+  
   // Canada Facebook exception
   if (countryId === 'canada' && serviceId === 'facebook') {
-    return basePrice * 5;
+    calculated = basePrice * 5;
   }
-  
+  // Canada WhatsApp exception
+  else if (countryId === 'canada' && serviceId === 'whatsapp') {
+    calculated = basePrice * 4;
+  }
   // Google / Google Voice exceptions
-  if (serviceId === 'google' || serviceId === 'googlevoice') {
+  else if (serviceId === 'google' || serviceId === 'googlevoice') {
     if (basePrice >= 0.3) {
-      return basePrice * 10;
+      calculated = basePrice * 10;
     } else {
-      return basePrice * 15;
+      calculated = basePrice * 15;
     }
   }
-  
   // Standard tiered logic
-  if (basePrice >= 0.4) return basePrice * 2;
-  if (basePrice >= 0.1) return basePrice * 3;
-  if (basePrice >= 0.01) return basePrice * 10;
-  return basePrice * 100;
+  else {
+    if (basePrice >= 0.4) calculated = basePrice * 2;
+    else if (basePrice >= 0.1) calculated = basePrice * 3;
+    else if (basePrice >= 0.01) calculated = basePrice * 10;
+    else calculated = basePrice * 100;
+  }
+
+  // Apply env multiplier (default to 1 if missing, 0, or invalid)
+  const envMultiplierStr = process.env.NEXT_PUBLIC_NUMBERS_MULTIPLIER;
+  const envMultiplier = Number(envMultiplierStr);
+  const finalMultiplier = (!envMultiplierStr || isNaN(envMultiplier) || envMultiplier === 0) ? 1 : envMultiplier;
+
+  return calculated * finalMultiplier;
 };
 
 const getServiceIcon = (serviceId: string) => {
