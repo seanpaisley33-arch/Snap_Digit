@@ -56,6 +56,8 @@ interface BoostOrder {
     service: string;
     link: string;
     quantity: number;
+    start_count?: string | number;
+    remains?: string | number;
   };
   isCancelling?: boolean;
 }
