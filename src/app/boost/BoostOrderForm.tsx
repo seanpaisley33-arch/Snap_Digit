@@ -555,6 +555,25 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
                           </div>
                         </div>
 
+                        {/* Live JAP Stats Row */}
+                        {(order.details.start_count !== undefined || order.details.remains !== undefined) && (
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800/50 mt-1">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                {order.details.start_count || 0}
+                              </span>
+                              <span className="text-[9px] text-gray-500 uppercase tracking-wider font-semibold">Start Count</span>
+                            </div>
+                            
+                            <div className="flex flex-col text-right">
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                {order.details.remains || 0}
+                              </span>
+                              <span className="text-[9px] text-gray-500 uppercase tracking-wider font-semibold">Remains</span>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Cancel Action if Pending */}
                         {order.status === 'pending' && (
                           <div className="pt-2 border-t border-gray-100 dark:border-gray-800 mt-2">

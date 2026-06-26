@@ -63,6 +63,9 @@ export async function POST(req: Request) {
       if (!pid || !japData[pid] || japData[pid].error) continue;
 
       const japStatus = String(japData[pid].status).toLowerCase();
+      const japStartCount = japData[pid].start_count;
+      const japRemains = japData[pid].remains;
+
       let newLocalStatus = order.status;
 
       if (japStatus === 'pending') {
@@ -72,16 +75,24 @@ export async function POST(req: Request) {
       } else if (japStatus === 'completed' || japStatus === 'partial') {
         newLocalStatus = 'completed';
       } else if (japStatus === 'canceled' || japStatus === 'cancelled') {
-        // We just mark it as cancelled_by_provider for the user to see. 
-        // (Refund logic for provider cancellations can be handled manually or in a dedicated cron job)
         newLocalStatus = 'failed_provider';
       }
 
-      if (newLocalStatus !== order.status) {
+      const needsStatusUpdate = newLocalStatus !== order.status;
+      const needsDetailsUpdate = order.details.start_count !== japStartCount || order.details.remains !== japRemains;
+
+      if (needsStatusUpdate || needsDetailsUpdate) {
         updates.push(
           supabaseAdmin
             .from('orders')
-            .update({ status: newLocalStatus })
+            .update({ 
+              status: newLocalStatus,
+              details: {
+                ...order.details,
+                start_count: japStartCount,
+                remains: japRemains
+              }
+            })
             .eq('id', order.id)
         );
       }
