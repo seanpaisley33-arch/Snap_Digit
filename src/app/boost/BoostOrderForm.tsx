@@ -494,7 +494,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
           ) : (
             <>
               <div className="space-y-3">
-                {(showAllOrders ? activeOrders : activeOrders.slice(0, 5)).map((order, i) => {
+                {(showAllOrders ? activeOrders : activeOrders.slice(0, 3)).map((order, i) => {
                   const catObj = CATEGORIES.find(c => c.id === order.details.platform);
                   return (
                     <motion.div 
@@ -596,7 +596,7 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
                 })}
               </div>
               
-              {activeOrders.length > 5 && (
+              {activeOrders.length > 3 && (
                 <div className="pt-2">
                   <button 
                     onClick={() => setShowAllOrders(!showAllOrders)}
