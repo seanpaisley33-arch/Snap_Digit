@@ -211,12 +211,12 @@ export async function POST(req: Request) {
         
         await supabaseAdmin
           .from('orders')
-          .update({ status: 'processing', details: updatedDetails })
+          .update({ status: 'pending', details: updatedDetails })
           .eq('id', order.id);
 
         return NextResponse.json({ 
           message: 'Order placed successfully', 
-          order: { ...order, status: 'processing', details: updatedDetails },
+          order: { ...order, status: 'pending', details: updatedDetails },
           newBalance: newBalance
         });
       }

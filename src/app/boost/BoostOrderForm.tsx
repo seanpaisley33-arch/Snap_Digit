@@ -111,13 +111,22 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       
+      try {
+        await fetch('/api/orders/sync', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+      } catch (e) {
+        console.error('Failed to sync orders', e);
+      }
+
       const { data } = await supabase
         .from('orders')
         .select('*')
         .eq('user_id', session.user.id)
         .eq('service_type', 'boost')
         .order('created_at', { ascending: false })
-        .limit(50); // Fetch recent 50 orders
+        .limit(50); 
 
       if (data && data.length > 0) {
         setActiveOrders(data as BoostOrder[]);
@@ -243,7 +252,19 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
         if (balRes.data) setBalance(Number(balRes.data.wallet_balance));
       } else {
         showToast(data.error || 'Failed to cancel order.', 'error');
-        setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, isCancelling: false } : o));
+        // The backend might have changed the status to 'processing' if JAP refused.
+        // We must re-fetch active orders to sync the UI!
+        const fetchActiveOrders = async () => {
+          const { data } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('user_id', session?.user.id)
+            .eq('service_type', 'boost')
+            .order('created_at', { ascending: false })
+            .limit(50);
+          if (data) setActiveOrders(data as BoostOrder[]);
+        };
+        await fetchActiveOrders();
       }
     } catch (e) {
       showToast('An error occurred while cancelling.', 'error');
@@ -484,7 +505,8 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
                       
                       {/* Status Banner */}
                       <div className={`absolute left-0 top-0 w-1.5 h-full ${
-                        order.status === 'processing' ? 'bg-yellow-400' :
+                        order.status === 'pending' ? 'bg-yellow-400' :
+                        order.status === 'processing' ? 'bg-blue-500' :
                         order.status === 'completed' ? 'bg-green-500' : 'bg-red-500'
                       }`} />
 
@@ -500,10 +522,12 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
                           </div>
                           
                           <div className={`text-[11px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${
-                            order.status === 'processing' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500' :
+                            order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500' :
+                            order.status === 'processing' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-500' :
                             order.status === 'completed' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-500' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-500'
                           }`}>
-                            {order.status === 'processing' ? 'In Progress' : 
+                            {order.status === 'pending' ? 'Pending' :
+                             order.status === 'processing' ? 'In Progress' : 
                              order.status === 'completed' ? 'Completed' : 'Cancelled'}
                           </div>
                         </div>
@@ -531,8 +555,8 @@ export default function BoostOrderForm({ initialBalance }: { initialBalance: num
                           </div>
                         </div>
 
-                        {/* Cancel Action if Processing */}
-                        {order.status === 'processing' && (
+                        {/* Cancel Action if Pending */}
+                        {order.status === 'pending' && (
                           <div className="pt-2 border-t border-gray-100 dark:border-gray-800 mt-2">
                             <button 
                               onClick={() => handleCancelOrder(order.id)}

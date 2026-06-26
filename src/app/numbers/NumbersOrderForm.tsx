@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import { Wallet, Loader2, CheckCircle2, Copy, MessageSquare, Plus, ChevronDown, RefreshCw, XCircle, X, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { FaWhatsapp, FaTelegram, FaGoogle, FaRobot, FaFire, FaFacebook, FaMobileAlt } from 'react-icons/fa';
+import { 
+  FaWhatsapp, FaTelegram, FaGoogle, FaRobot, FaFire, FaFacebook, FaMobileAlt, FaPhoneAlt,
+  FaInstagram, FaTwitter, FaTiktok, FaDiscord, FaSnapchatGhost, FaAmazon, FaApple, 
+  FaMicrosoft, FaPaypal, FaSteam, FaTwitch, FaYahoo, FaViber, FaLine, FaSkype
+} from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActiveOrder {
@@ -62,12 +66,37 @@ const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: str
 
 const getServiceIcon = (serviceId: string) => {
   const s = serviceId.toLowerCase();
+  
+  // Custom Google Voice component mimicking the logo
+  const GoogleVoiceIcon = () => (
+    <div className="w-5 h-5 bg-[#1DA462] rounded-[5px] flex items-center justify-center">
+      <FaPhoneAlt className="w-3 h-3 text-white" />
+    </div>
+  );
+
   if (s.includes('whatsapp')) return <FaWhatsapp className="w-5 h-5 text-[#25D366]" />;
   if (s.includes('telegram')) return <FaTelegram className="w-5 h-5 text-[#0088cc]" />;
+  if (s.includes('googlevoice') || s === 'google voice') return <GoogleVoiceIcon />;
   if (s.includes('google')) return <FaGoogle className="w-5 h-5 text-[#EA4335]" />;
-  if (s.includes('openai')) return <FaRobot className="w-5 h-5 text-[#10a37f]" />;
+  if (s.includes('openai') || s.includes('chatgpt')) return <FaRobot className="w-5 h-5 text-[#10a37f]" />;
   if (s.includes('tinder')) return <FaFire className="w-5 h-5 text-[#fe3c72]" />;
   if (s.includes('facebook')) return <FaFacebook className="w-5 h-5 text-[#1877F2]" />;
+  if (s.includes('instagram')) return <FaInstagram className="w-5 h-5 text-[#E4405F]" />;
+  if (s.includes('twitter') || s.includes('x.com')) return <FaTwitter className="w-5 h-5 text-[#1DA1F2]" />;
+  if (s.includes('tiktok')) return <FaTiktok className="w-5 h-5 text-black dark:text-white" />;
+  if (s.includes('discord')) return <FaDiscord className="w-5 h-5 text-[#5865F2]" />;
+  if (s.includes('snapchat')) return <FaSnapchatGhost className="w-5 h-5 text-[#FFFC00]" />;
+  if (s.includes('amazon')) return <FaAmazon className="w-5 h-5 text-[#FF9900]" />;
+  if (s.includes('apple')) return <FaApple className="w-5 h-5 text-gray-800 dark:text-white" />;
+  if (s.includes('microsoft')) return <FaMicrosoft className="w-5 h-5 text-[#00A4EF]" />;
+  if (s.includes('paypal')) return <FaPaypal className="w-5 h-5 text-[#00457C]" />;
+  if (s.includes('steam')) return <FaSteam className="w-5 h-5 text-[#171a21] dark:text-gray-300" />;
+  if (s.includes('twitch')) return <FaTwitch className="w-5 h-5 text-[#9146FF]" />;
+  if (s.includes('yahoo')) return <FaYahoo className="w-5 h-5 text-[#410093]" />;
+  if (s.includes('viber')) return <FaViber className="w-5 h-5 text-[#665CAC]" />;
+  if (s.includes('line')) return <FaLine className="w-5 h-5 text-[#00C300]" />;
+  if (s.includes('skype')) return <FaSkype className="w-5 h-5 text-[#00AFF0]" />;
+  
   return <FaMobileAlt className="w-5 h-5 text-gray-500" />;
 }
 

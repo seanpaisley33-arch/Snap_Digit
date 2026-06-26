@@ -29,12 +29,54 @@ export async function POST(req: Request) {
       .single();
 
     if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    if (order.status !== 'processing') {
-       return NextResponse.json({ error: 'Only processing orders can be cancelled' }, { status: 400 });
+    if (order.status !== 'processing' && order.status !== 'pending') {
+       return NextResponse.json({ error: 'Order cannot be cancelled in its current state' }, { status: 400 });
     }
 
     if (order.service_type === 'boost') {
-      // Refund the user immediately for Boost orders
+      if (order.status !== 'pending') {
+        return NextResponse.json({ error: 'This order is already being processed and cannot be cancelled.' }, { status: 400 });
+      }
+
+      const providerOrderId = order.details?.provider_order_id;
+      if (!providerOrderId) return NextResponse.json({ error: 'Provider order ID missing' }, { status: 400 });
+
+      const apiKey = process.env.JAP_API_KEY;
+      if (!apiKey) throw new Error("JAP_API_KEY is missing");
+
+      // 1. Call JAP to request cancellation
+      const japRes = await fetch('https://justanotherpanel.com/api/v2', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        body: JSON.stringify({
+          key: apiKey,
+          action: 'cancel',
+          orders: providerOrderId
+        })
+      });
+
+      if (!japRes.ok) return NextResponse.json({ error: 'Failed to reach provider' }, { status: 502 });
+
+      const japData = await japRes.json();
+      
+      // JAP response for single order usually looks like: [{ order: 123, cancel: { error: 'Cancel unavailable...' } }]
+      const cancelResult = Array.isArray(japData) ? japData[0]?.cancel : japData.cancel;
+
+      if (cancelResult && typeof cancelResult === 'object' && cancelResult.error) {
+        // Provider refused cancellation (likely already processing)
+        // Automatically sync our local status to 'processing'
+        await supabaseAdmin
+          .from('orders')
+          .update({ status: 'processing' })
+          .eq('id', order.id);
+          
+        return NextResponse.json({ error: 'Cancellation refused. The order is already being processed.' }, { status: 400 });
+      }
+
+      // If we reach here, JAP accepted the cancellation. Proceed with refund.
       const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('wallet_balance')
@@ -53,7 +95,7 @@ export async function POST(req: Request) {
         .update({ status: 'cancelled', details: { ...order.details, error: 'Cancelled by user' } })
         .eq('id', order.id);
 
-      return NextResponse.json({ status: 'cancelled', message: 'Order cancelled and refunded.' });
+      return NextResponse.json({ status: 'cancelled', message: 'Order cancelled successfully and refunded.' });
     }
 
     const providerOrderId = order.details?.provider_order_id;
