@@ -9,7 +9,17 @@ export async function GET() {
       return NextResponse.json({ error: 'JAP_API_KEY is not configured' }, { status: 500 });
     }
 
-    const usdToXafRate = Number(process.env.USD_TO_XAF_RATE) || 600;
+    let usdToXafRate = Number(process.env.USD_TO_XAF_RATE) || 600;
+    try {
+      const erRes = await fetch('https://open.er-api.com/v6/latest/USD', { next: { revalidate: 3600 } });
+      if (erRes.ok) {
+        const erData = await erRes.json();
+        if (erData?.rates?.XAF) usdToXafRate = erData.rates.XAF;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch live exchange rate for boost API, using fallback');
+    }
+
     const profitMultiplier = Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER) || 4;
 
     const JAP_SERVICE_MAP: Record<string, number> = {
