@@ -85,11 +85,12 @@ export async function POST(req: Request) {
       if (service_type === 'number') {
         const countryName = details.country || 'any';
         const productName = details.service || 'any';
+        const operatorName = details.operator || 'any';
         const apiKey = process.env.FIVESIM_API_KEY;
         
         if (!apiKey) throw new Error("FIVESIM_API_KEY is missing");
 
-        const simRes = await fetch(`https://5sim.net/v1/user/buy/activation/${countryName}/any/${productName}`, {
+        const simRes = await fetch(`https://5sim.net/v1/user/buy/activation/${countryName}/${operatorName}/${productName}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${apiKey}`,

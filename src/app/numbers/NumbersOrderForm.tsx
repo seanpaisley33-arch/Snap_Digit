@@ -42,39 +42,42 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   return <span>⏳ Expires in {timeLeft}</span>;
 }
 
-const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: string) => {
-  let calculated = basePrice;
+const getEnvMultiplier = (serviceId: string) => {
+  let val: string | undefined;
+  const s = serviceId.toLowerCase();
+
+  if (s.includes('whatsapp')) val = process.env.NEXT_PUBLIC_MULTIPLIER_WHATSAPP;
+  else if (s.includes('facebook')) val = process.env.NEXT_PUBLIC_MULTIPLIER_FACEBOOK;
+  else if (s.includes('telegram')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TELEGRAM;
+  else if (s.includes('googlevoice') || s === 'google voice') val = process.env.NEXT_PUBLIC_MULTIPLIER_GOOGLEVOICE;
+  else if (s.includes('google')) val = process.env.NEXT_PUBLIC_MULTIPLIER_GOOGLE;
+  else if (s.includes('instagram')) val = process.env.NEXT_PUBLIC_MULTIPLIER_INSTAGRAM;
+  else if (s.includes('tiktok')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TIKTOK;
+  else if (s.includes('twitter') || s.includes('x.com')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TWITTER;
+  else if (s.includes('snapchat')) val = process.env.NEXT_PUBLIC_MULTIPLIER_SNAPCHAT;
+  else if (s.includes('viber')) val = process.env.NEXT_PUBLIC_MULTIPLIER_VIBER;
+  else if (s.includes('line')) val = process.env.NEXT_PUBLIC_MULTIPLIER_LINE;
+  else if (s.includes('skype')) val = process.env.NEXT_PUBLIC_MULTIPLIER_SKYPE;
+  else if (s.includes('microsoft')) val = process.env.NEXT_PUBLIC_MULTIPLIER_MICROSOFT;
+  else if (s.includes('apple')) val = process.env.NEXT_PUBLIC_MULTIPLIER_APPLE;
+  else if (s.includes('yahoo')) val = process.env.NEXT_PUBLIC_MULTIPLIER_YAHOO;
+  else if (s.includes('discord')) val = process.env.NEXT_PUBLIC_MULTIPLIER_DISCORD;
+  else if (s.includes('steam')) val = process.env.NEXT_PUBLIC_MULTIPLIER_STEAM;
+  else if (s.includes('twitch')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TWITCH;
+  else if (s.includes('openai') || s.includes('chatgpt')) val = process.env.NEXT_PUBLIC_MULTIPLIER_OPENAI;
+  else if (s.includes('tinder')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TINDER;
+  else if (s.includes('amazon')) val = process.env.NEXT_PUBLIC_MULTIPLIER_AMAZON;
+  else if (s.includes('paypal')) val = process.env.NEXT_PUBLIC_MULTIPLIER_PAYPAL;
+  else val = process.env.NEXT_PUBLIC_NUMBERS_MULTIPLIER;
   
-  // Canada Facebook exception
-  if (countryId === 'canada' && serviceId === 'facebook') {
-    calculated = basePrice * 5;
-  }
-  // Canada WhatsApp exception
-  else if (countryId === 'canada' && serviceId === 'whatsapp') {
-    calculated = basePrice * 4;
-  }
-  // Google / Google Voice exceptions
-  else if (serviceId === 'google' || serviceId === 'googlevoice') {
-    if (basePrice >= 0.3) {
-      calculated = basePrice * 10;
-    } else {
-      calculated = basePrice * 15;
-    }
-  }
-  // Standard tiered logic
-  else {
-    if (basePrice >= 0.4) calculated = basePrice * 2;
-    else if (basePrice >= 0.1) calculated = basePrice * 3;
-    else if (basePrice >= 0.01) calculated = basePrice * 10;
-    else calculated = basePrice * 100;
-  }
+  const num = Number(val);
+  return (!val || isNaN(num) || num === 0) ? 1 : num;
+};
 
-  // Apply env multiplier (default to 1 if missing, 0, or invalid)
-  const envMultiplierStr = process.env.NEXT_PUBLIC_NUMBERS_MULTIPLIER;
-  const envMultiplier = Number(envMultiplierStr);
-  const finalMultiplier = (!envMultiplierStr || isNaN(envMultiplier) || envMultiplier === 0) ? 1 : envMultiplier;
-
-  return calculated * finalMultiplier;
+const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: string) => {
+  // Apply service-specific env multiplier directly to the base wholesale price
+  const finalMultiplier = getEnvMultiplier(serviceId);
+  return basePrice * finalMultiplier;
 };
 
 const getServiceIcon = (serviceId: string) => {
@@ -195,7 +198,8 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
             id: key,
             name: key.charAt(0).toUpperCase() + key.slice(1),
             price: sData[key].Price,
-            qty: sData[key].Qty
+            qty: sData[key].Qty,
+            operator: sData[key].Operator
           };
         }).sort((a, b) => a.name.localeCompare(b.name));
         
@@ -280,6 +284,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
           details: {
             country: countryId,
             service: serviceId,
+            operator: selectedServiceObj.operator,
           }
         }),
       });
