@@ -20,7 +20,16 @@ export async function GET() {
       console.warn('Failed to fetch live exchange rate for boost API, using fallback');
     }
 
-    const profitMultiplier = Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER) || 4;
+    const defaultProfitMultiplier = Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER) || 4;
+
+    const getBoostMultiplier = (key: string) => {
+      if (key.startsWith('tk_')) return Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER_TIKTOK) || defaultProfitMultiplier;
+      if (key.startsWith('ig_')) return Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER_INSTAGRAM) || defaultProfitMultiplier;
+      if (key.startsWith('fb_')) return Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER_FACEBOOK) || defaultProfitMultiplier;
+      if (key.startsWith('yt_')) return Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER_YOUTUBE) || defaultProfitMultiplier;
+      if (key.startsWith('tg_')) return Number(process.env.NEXT_PUBLIC_BOOST_MULTIPLIER_TELEGRAM) || defaultProfitMultiplier;
+      return defaultProfitMultiplier;
+    };
 
     const JAP_SERVICE_MAP: Record<string, number> = {
       'tk_views': 8970,
@@ -72,7 +81,8 @@ export async function GET() {
     // Pre-fill all with fallbacks first
     for (const [key, _] of Object.entries(JAP_SERVICE_MAP)) {
       const costUsd = STATIC_FALLBACKS[key] || 1.0;
-      const effectiveMultiplier = key === 'fb_groups' ? profitMultiplier * 2 : profitMultiplier;
+      const baseMultiplier = getBoostMultiplier(key);
+      const effectiveMultiplier = key === 'fb_groups' ? baseMultiplier * 2 : baseMultiplier;
       ratesUSD[key] = costUsd * effectiveMultiplier;
       ratesXAF[key] = Math.ceil(ratesUSD[key] * usdToXafRate);
     }
@@ -102,7 +112,8 @@ export async function GET() {
             const internalKey = Object.keys(JAP_SERVICE_MAP).find(k => JAP_SERVICE_MAP[k] === Number(service.service));
             if (internalKey) {
               const wholesaleUsd = Number(service.rate);
-              const effectiveMultiplier = internalKey === 'fb_groups' ? profitMultiplier * 2 : profitMultiplier;
+              const baseMultiplier = getBoostMultiplier(internalKey);
+              const effectiveMultiplier = internalKey === 'fb_groups' ? baseMultiplier * 2 : baseMultiplier;
               const retailUsd = wholesaleUsd * effectiveMultiplier;
               ratesUSD[internalKey] = retailUsd;
               ratesXAF[internalKey] = Math.ceil(retailUsd * usdToXafRate);
