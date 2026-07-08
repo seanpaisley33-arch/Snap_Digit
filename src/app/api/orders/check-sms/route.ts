@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const supabaseAdmin = createClient(
@@ -45,7 +47,8 @@ export async function POST(req: Request) {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Accept': 'application/json',
-      }
+      },
+      cache: 'no-store'
     });
 
     if (!simRes.ok) {
@@ -54,6 +57,9 @@ export async function POST(req: Request) {
 
     const simData = await simRes.json();
     
+    // Log for debugging
+    console.log(`[5sim Check] Order: ${orderId}, Provider ID: ${providerOrderId}, Status: ${simData.status}, SMS Count: ${simData.sms ? simData.sms.length : 0}`);
+
     // simData returns: { id, phone, status, sms: [{ code: "123456", text: "..." }] }
     
     // 3. Handle 5sim response

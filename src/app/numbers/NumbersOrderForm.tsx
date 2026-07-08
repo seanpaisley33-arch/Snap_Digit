@@ -125,6 +125,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   
   const [countryId, setCountryId] = useState('usa'); // Default to USA
   const [serviceId, setServiceId] = useState('whatsapp'); // Default to Whatsapp
+  const [operatorId, setOperatorId] = useState(''); // Default to auto-selected
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -135,6 +136,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   // Modals state
   const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [isOperatorModalOpen, setIsOperatorModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const router = useRouter();
@@ -197,17 +199,19 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
           return {
             id: key,
             name: key.charAt(0).toUpperCase() + key.slice(1),
-            price: sData[key].Price,
-            qty: sData[key].Qty,
-            operator: sData[key].Operator
+            operators: sData[key].operators.sort((a: any, b: any) => a.price - b.price) // sort cheapest first
           };
         }).sort((a, b) => a.name.localeCompare(b.name));
         
         setServices(sArr);
         
-        // Auto-select first available service if current serviceId is not in the new list
-        if (!sArr.find(s => s.id === serviceId) && sArr.length > 0) {
-          setServiceId(sArr[0].id);
+        // Auto-select first available service and operator
+        if (sArr.length > 0) {
+          const defaultSrv = sArr.find(s => s.id === serviceId) || sArr[0];
+          setServiceId(defaultSrv.id);
+          if (defaultSrv.operators && defaultSrv.operators.length > 0) {
+            setOperatorId(defaultSrv.operators[0].name);
+          }
         }
       } catch (e) {
         console.error("Services fetch failed");
@@ -216,6 +220,16 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
     };
     fetchServices();
   }, [countryId]);
+
+  // When service changes manually, auto-select its first operator
+  useEffect(() => {
+    if (serviceId) {
+      const srv = services.find(s => s.id === serviceId);
+      if (srv && srv.operators && srv.operators.length > 0) {
+        setOperatorId(srv.operators[0].name);
+      }
+    }
+  }, [serviceId, services]);
 
   // Load existing orders on mount
   useEffect(() => {
@@ -248,8 +262,9 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   // Pricing calculations
   const selectedCountryObj = countries.find(c => c.id === countryId);
   const selectedServiceObj = services.find(s => s.id === serviceId);
+  const selectedOperatorObj = selectedServiceObj?.operators?.find((o: any) => o.name === operatorId) || selectedServiceObj?.operators?.[0];
 
-  const priceUSD = selectedServiceObj ? getCalculatedPrice(selectedServiceObj.price, countryId, serviceId) : 0;
+  const priceUSD = selectedOperatorObj ? getCalculatedPrice(selectedOperatorObj.price, countryId, serviceId) : 0;
   const priceXAF = Math.round(priceUSD * exchangeRate);
 
   const handlePurchase = async (e: React.FormEvent) => {
@@ -263,7 +278,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
       return;
     }
 
-    if (!selectedCountryObj || !selectedServiceObj) {
+    if (!selectedCountryObj || !selectedServiceObj || !selectedOperatorObj) {
       setErrorMsg('Please wait for services to load.');
       setLoading(false);
       return;
@@ -284,7 +299,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
           details: {
             country: countryId,
             service: serviceId,
-            operator: selectedServiceObj.operator,
+            operator: selectedOperatorObj.name,
           }
         }),
       });
@@ -580,7 +595,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
-                                ${getCalculatedPrice(srv.price, countryId, srv.id).toFixed(2)}
+                                ${getCalculatedPrice(srv.operators[0].price, countryId, srv.id).toFixed(2)}+
                               </div>
                               <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${serviceId === srv.id ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
                                 {serviceId === srv.id && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
@@ -591,6 +606,71 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
                         {filteredServices.length === 0 && (
                           <div className="p-4 text-center text-sm text-gray-500">No services found.</div>
                         )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            {/* Operator Selector */}
+            <div className="space-y-2 relative md:col-span-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">Select Operator</label>
+              <div 
+                onClick={() => { setIsOperatorModalOpen(!isOperatorModalOpen); }}
+                className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#3A3A3C] rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#3A3A3C] transition-colors"
+              >
+                <div className="flex items-center gap-3 text-gray-900 dark:text-white font-medium">
+                  {selectedOperatorObj ? (
+                    <>
+                      <div className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-md text-[10px] font-bold text-gray-600 dark:text-gray-300">
+                        OP
+                      </div>
+                      <span className="capitalize">{selectedOperatorObj.name}</span>
+                      <span className="text-xs text-gray-500 ml-2 bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded-md">
+                        {selectedOperatorObj.qty.toLocaleString()} in stock
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-gray-400">Loading operators...</span>
+                  )}
+                </div>
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOperatorModalOpen ? 'rotate-180' : ''}`} />
+              </div>
+
+              <AnimatePresence>
+                {isOperatorModalOpen && selectedServiceObj && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsOperatorModalOpen(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-[calc(100%+8px)] left-0 w-full z-50 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#3A3A3C] overflow-hidden flex flex-col max-h-[350px]"
+                    >
+                      <div className="flex-1 overflow-y-auto py-2">
+                        {selectedServiceObj.operators.map((op: any) => (
+                          <div 
+                            key={op.name} 
+                            onClick={() => { setOperatorId(op.name); setIsOperatorModalOpen(false); }}
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2C2C2E] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#2C2C2E] last:border-0"
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-gray-900 dark:text-white capitalize">{op.name}</span>
+                              <span className="text-xs text-gray-500">Stock: {op.qty.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
+                                ${getCalculatedPrice(op.price, countryId, serviceId).toFixed(2)}
+                              </div>
+                              <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${operatorId === op.name ? 'border-indigo-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                                {operatorId === op.name && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </motion.div>
                   </>
@@ -616,7 +696,7 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
               whileHover={{ scale: 1.02, boxShadow: '0 10px 40px rgba(99, 102, 241, 0.3)' }}
               whileTap={{ scale: 0.97 }}
               onClick={handlePurchase}
-              disabled={loading || !selectedServiceObj || !selectedCountryObj}
+              disabled={loading || !selectedServiceObj || !selectedCountryObj || !selectedOperatorObj}
               className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg transition-all shadow-lg shadow-indigo-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Get Number'}

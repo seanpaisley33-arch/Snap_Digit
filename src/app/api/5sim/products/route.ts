@@ -16,32 +16,24 @@ export async function GET(req: Request) {
       return NextResponse.json({});
     }
 
-    const processedProducts: Record<string, { Price: number, Qty: number, Operator: string }> = {};
+    const processedProducts: Record<string, { operators: { name: string, price: number, qty: number }[] }> = {};
 
     for (const [product, operators] of Object.entries(countryData)) {
-      let bestOperator = 'any';
-      let minCost = Infinity;
-      let totalQty = 0;
+      const opList: { name: string, price: number, qty: number }[] = [];
 
       for (const [opName, opData] of Object.entries(operators as any)) {
         const cost = Number((opData as any).cost);
         const count = Number((opData as any).count);
         
         if (count > 0) {
-          totalQty += count;
-          if (cost < minCost) {
-            minCost = cost;
-            bestOperator = opName;
-          }
+          opList.push({ name: opName, price: cost, qty: count });
         }
       }
 
       // Only include products that actually have stock
-      if (totalQty > 0 && minCost !== Infinity) {
+      if (opList.length > 0) {
         processedProducts[product] = {
-          Price: minCost,
-          Qty: totalQty,
-          Operator: bestOperator
+          operators: opList
         };
       }
     }
