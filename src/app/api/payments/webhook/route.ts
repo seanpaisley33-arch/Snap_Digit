@@ -30,50 +30,20 @@ export async function POST(req: Request) {
     // 2. Process Successful Payment
     const paymentStatus = String(status).toUpperCase();
     if (paymentStatus === 'SUCCESSFUL') {
-      // First, get the transaction to ensure it's pending and get the user_id
-      const { data: transaction, error: fetchError } = await supabaseAdmin
-        .from('transactions')
-        .select('user_id, status, amount')
-        .eq('id', externalId)
-        .single();
+      // We use a PostgreSQL RPC function to atomically process the payment.
+      // This prevents race conditions (double crediting) if Fapshi fires the webhook multiple times.
+      const { data: processed, error: rpcError } = await supabaseAdmin.rpc('process_fapshi_payment', {
+        p_transaction_id: externalId,
+        p_fapshi_trans_id: transId
+      });
 
-      if (fetchError || !transaction) {
-        console.error('Transaction not found', externalId);
-        return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+      if (rpcError) {
+        console.error('RPC Error processing payment:', rpcError);
+        return NextResponse.json({ error: 'Failed to process payment atomically' }, { status: 500 });
       }
 
-      // Idempotency check: don't credit twice
-      if (transaction.status === 'success') {
+      if (!processed) {
         return NextResponse.json({ message: 'Already processed' });
-      }
-
-      // We need to safely update both the transaction and the user's wallet.
-      // Since Supabase REST doesn't support complex standard transactions in a single call without a stored procedure,
-      // We will do a simple sequenced update. For absolute financial safety, a custom RPC function in PostgreSQL is recommended.
-
-      // Update Transaction to success
-      const { error: txError } = await supabaseAdmin
-        .from('transactions')
-        .update({ status: 'success', fapshi_trans_id: transId })
-        .eq('id', externalId);
-
-      if (txError) throw txError;
-
-      // Update User Wallet Balance (RPC function recommended in prod, using raw fetch for quick implementation)
-      // We must query current balance then add, or better, rely on Postgres constraint/RPC.
-      
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('wallet_balance')
-        .eq('id', transaction.user_id)
-        .single();
-        
-      if (profile) {
-        const newBalance = Number(profile.wallet_balance) + Number(transaction.amount);
-        await supabaseAdmin
-          .from('profiles')
-          .update({ wallet_balance: newBalance })
-          .eq('id', transaction.user_id);
       }
     } else if (status === 'FAILED') {
       // Update transaction to failed
