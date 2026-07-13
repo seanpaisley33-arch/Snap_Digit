@@ -28,9 +28,13 @@ export async function proxy(request: NextRequest) {
   );
 
   // refreshing the auth token
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data?.user || null;
+  } catch (err) {
+    console.warn('Supabase auth network error in proxy middleware:', err);
+  }
 
   // protect dashboard
   if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {

@@ -17,8 +17,8 @@ const CATEGORIES = [
 
 const INITIAL_SERVICES = {
   tiktok: [
-    { id: 'tk_views', name: 'Video/Reel Views', ratePer1000: 10, min: 100, max: 100000 },
-    { id: 'tk_likes', name: 'Post Likes', ratePer1000: 300, min: 50, max: 20000 },
+    { id: 'tk_views', name: 'Video/Reel Views', ratePer1000: 1600, min: 100, max: 100000 },
+    { id: 'tk_likes', name: 'Post Likes', ratePer1000: 1600, min: 50, max: 20000 },
     { id: 'tk_followers', name: 'Profile Followers', ratePer1000: 1600, min: 100, max: 50000 },
   ],
   instagram: [

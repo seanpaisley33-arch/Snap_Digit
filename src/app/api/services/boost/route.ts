@@ -127,6 +127,15 @@ export async function GET() {
       console.warn('Failed to reach JAP API (Timeout/Network). Using static fallbacks.', fetchErr);
     }
 
+    // Force TikTok views and likes to have the same rate as TikTok followers
+    if (ratesUSD['tk_followers']) {
+      ratesUSD['tk_views'] = ratesUSD['tk_followers'];
+      ratesXAF['tk_views'] = ratesXAF['tk_followers'];
+      
+      ratesUSD['tk_likes'] = ratesUSD['tk_followers'];
+      ratesXAF['tk_likes'] = ratesXAF['tk_followers'];
+    }
+
     return NextResponse.json({ ratesXAF, ratesUSD });
 
   } catch (err: any) {
