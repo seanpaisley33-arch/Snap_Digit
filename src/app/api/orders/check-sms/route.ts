@@ -62,9 +62,33 @@ export async function POST(req: Request) {
 
     // simData returns: { id, phone, status, sms: [{ code: "123456", text: "..." }] }
     
+    // Check for auto-cancel (>= 12 minutes elapsed without SMS)
+    const now = new Date();
+    const createdAt = new Date(order.created_at);
+    const elapsedMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+
+    if (elapsedMinutes >= 12 && (!simData.sms || simData.sms.length === 0) && simData.status !== 'CANCELED' && simData.status !== 'TIMEOUT') {
+      // Cancel on 5sim to refund our API account
+      await fetch(`https://5sim.net/v1/user/cancel/${providerOrderId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Accept': 'application/json',
+        }
+      });
+      
+      // Update local order status to cancelled, do NOT refund user balance
+      await supabaseAdmin
+        .from('orders')
+        .update({ status: 'cancelled', details: { ...order.details, error: 'Order timed out automatically' } })
+        .eq('id', order.id);
+
+      return NextResponse.json({ status: 'cancelled', message: 'Order timed out automatically.' });
+    }
+
     // 3. Handle 5sim response
-    if (simData.status === 'CANCELED' || simData.status === 'TIMEOUT') {
-      // Refund the user!
+    if (simData.status === 'CANCELED') {
+      // Refund the user if cancelled by 5sim (e.g. number banned)
       const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('wallet_balance')
@@ -84,6 +108,16 @@ export async function POST(req: Request) {
         .eq('id', order.id);
 
       return NextResponse.json({ status: 'cancelled', message: `Order was ${simData.status.toLowerCase()}. You have been refunded.` });
+    }
+
+    if (simData.status === 'TIMEOUT') {
+      // Natural timeout on 5sim - DO NOT refund the user
+      await supabaseAdmin
+        .from('orders')
+        .update({ status: 'cancelled', details: { ...order.details, error: `Order ${simData.status.toLowerCase()}` } })
+        .eq('id', order.id);
+
+      return NextResponse.json({ status: 'cancelled', message: `Order was ${simData.status.toLowerCase()}.` });
     }
 
     // Check if SMS arrived
