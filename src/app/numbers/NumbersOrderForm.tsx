@@ -42,33 +42,41 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   return <span>⏳ Expires in {timeLeft}</span>;
 }
 
-const getEnvMultiplier = (serviceId: string) => {
+const getEnvMultiplier = (serviceId: string, countryId?: string) => {
   let val: string | undefined;
   const s = serviceId.toLowerCase();
+  const c = countryId?.toLowerCase();
 
-  if (s.includes('whatsapp')) val = process.env.NEXT_PUBLIC_MULTIPLIER_WHATSAPP;
-  else if (s.includes('facebook')) val = process.env.NEXT_PUBLIC_MULTIPLIER_FACEBOOK;
-  else if (s.includes('telegram')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TELEGRAM;
-  else if (s.includes('googlevoice') || s === 'google voice') val = process.env.NEXT_PUBLIC_MULTIPLIER_GOOGLEVOICE;
-  else if (s.includes('google')) val = process.env.NEXT_PUBLIC_MULTIPLIER_GOOGLE;
-  else if (s.includes('instagram')) val = process.env.NEXT_PUBLIC_MULTIPLIER_INSTAGRAM;
-  else if (s.includes('tiktok')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TIKTOK;
-  else if (s.includes('twitter') || s.includes('x.com')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TWITTER;
-  else if (s.includes('snapchat')) val = process.env.NEXT_PUBLIC_MULTIPLIER_SNAPCHAT;
-  else if (s.includes('viber')) val = process.env.NEXT_PUBLIC_MULTIPLIER_VIBER;
-  else if (s.includes('line')) val = process.env.NEXT_PUBLIC_MULTIPLIER_LINE;
-  else if (s.includes('skype')) val = process.env.NEXT_PUBLIC_MULTIPLIER_SKYPE;
-  else if (s.includes('microsoft')) val = process.env.NEXT_PUBLIC_MULTIPLIER_MICROSOFT;
-  else if (s.includes('apple')) val = process.env.NEXT_PUBLIC_MULTIPLIER_APPLE;
-  else if (s.includes('yahoo')) val = process.env.NEXT_PUBLIC_MULTIPLIER_YAHOO;
-  else if (s.includes('discord')) val = process.env.NEXT_PUBLIC_MULTIPLIER_DISCORD;
-  else if (s.includes('steam')) val = process.env.NEXT_PUBLIC_MULTIPLIER_STEAM;
-  else if (s.includes('twitch')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TWITCH;
-  else if (s.includes('openai') || s.includes('chatgpt')) val = process.env.NEXT_PUBLIC_MULTIPLIER_OPENAI;
-  else if (s.includes('tinder')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TINDER;
-  else if (s.includes('amazon')) val = process.env.NEXT_PUBLIC_MULTIPLIER_AMAZON;
-  else if (s.includes('paypal')) val = process.env.NEXT_PUBLIC_MULTIPLIER_PAYPAL;
-  else val = process.env.NEXT_PUBLIC_NUMBERS_MULTIPLIER;
+  // Handle specific England/UK Facebook multiplier override
+  if (s.includes('facebook') && (c === 'england' || c === 'uk')) {
+    val = process.env.NEXT_PUBLIC_MULTIPLIER_ENGLAND_FACEBOOK || process.env.NEXT_PUBLIC_MULTIPLIER_UK_FACEBOOK;
+  }
+
+  if (!val) {
+    if (s.includes('whatsapp')) val = process.env.NEXT_PUBLIC_MULTIPLIER_WHATSAPP;
+    else if (s.includes('facebook')) val = process.env.NEXT_PUBLIC_MULTIPLIER_FACEBOOK;
+    else if (s.includes('telegram')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TELEGRAM;
+    else if (s.includes('googlevoice') || s === 'google voice') val = process.env.NEXT_PUBLIC_MULTIPLIER_GOOGLEVOICE;
+    else if (s.includes('google')) val = process.env.NEXT_PUBLIC_MULTIPLIER_GOOGLE;
+    else if (s.includes('instagram')) val = process.env.NEXT_PUBLIC_MULTIPLIER_INSTAGRAM;
+    else if (s.includes('tiktok')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TIKTOK;
+    else if (s.includes('twitter') || s.includes('x.com')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TWITTER;
+    else if (s.includes('snapchat')) val = process.env.NEXT_PUBLIC_MULTIPLIER_SNAPCHAT;
+    else if (s.includes('viber')) val = process.env.NEXT_PUBLIC_MULTIPLIER_VIBER;
+    else if (s.includes('line')) val = process.env.NEXT_PUBLIC_MULTIPLIER_LINE;
+    else if (s.includes('skype')) val = process.env.NEXT_PUBLIC_MULTIPLIER_SKYPE;
+    else if (s.includes('microsoft')) val = process.env.NEXT_PUBLIC_MULTIPLIER_MICROSOFT;
+    else if (s.includes('apple')) val = process.env.NEXT_PUBLIC_MULTIPLIER_APPLE;
+    else if (s.includes('yahoo')) val = process.env.NEXT_PUBLIC_MULTIPLIER_YAHOO;
+    else if (s.includes('discord')) val = process.env.NEXT_PUBLIC_MULTIPLIER_DISCORD;
+    else if (s.includes('steam')) val = process.env.NEXT_PUBLIC_MULTIPLIER_STEAM;
+    else if (s.includes('twitch')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TWITCH;
+    else if (s.includes('openai') || s.includes('chatgpt')) val = process.env.NEXT_PUBLIC_MULTIPLIER_OPENAI;
+    else if (s.includes('tinder')) val = process.env.NEXT_PUBLIC_MULTIPLIER_TINDER;
+    else if (s.includes('amazon')) val = process.env.NEXT_PUBLIC_MULTIPLIER_AMAZON;
+    else if (s.includes('paypal')) val = process.env.NEXT_PUBLIC_MULTIPLIER_PAYPAL;
+    else val = process.env.NEXT_PUBLIC_NUMBERS_MULTIPLIER;
+  }
   
   const num = Number(val);
   return (!val || isNaN(num) || num === 0) ? 1 : num;
@@ -76,7 +84,7 @@ const getEnvMultiplier = (serviceId: string) => {
 
 const getCalculatedPrice = (basePrice: number, countryId: string, serviceId: string) => {
   // Apply service-specific env multiplier directly to the base wholesale price
-  const finalMultiplier = getEnvMultiplier(serviceId);
+  const finalMultiplier = getEnvMultiplier(serviceId, countryId);
   return basePrice * finalMultiplier;
 };
 
@@ -409,7 +417,10 @@ export default function NumbersOrderForm({ initialBalance }: { initialBalance: n
   };
 
   // Modal filters
-  const filteredCountries = countries.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredCountries = countries.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   const filteredServices = services.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
